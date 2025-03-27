@@ -16,7 +16,7 @@ provider "google" {
 
 resource "google_storage_bucket" "data-lake-bucket" {
   name          = "insurance-data-bucket-376307"
-  location      = "US"
+  location      = "us-central1"
 
   # Optional, but recommended settings:
   storage_class = "STANDARD"
@@ -42,5 +42,5 @@ resource "google_storage_bucket" "data-lake-bucket" {
 resource "google_bigquery_dataset" "dataset" {
   dataset_id = "insurance_dataset_376307"
   project    = "vibrant-mantis-376307"
-  location   = "US"
+  location   = "us-central1"
 }

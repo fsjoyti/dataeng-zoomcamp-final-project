@@ -1,0 +1,401 @@
+id: 05_gcp_kv
+namespace: zoomcamp
+
+inputs:
+  - id: plan_type
+    type: SELECT
+    displayName: Select plan type
+    values: [ medical, dental ]
+    defaults: medical
+
+  - id: entity_type
+    type: SELECT
+    displayName: Select entity type
+    values: [ individual, shop ]
+    defaults: individual
+
+  - id: plan_year
+    type: SELECT
+    displayName: Select plan year
+    values: [ "2022", "2023", "2024", "2025" ]
+    description: Select the year for which you want to get the data
+    defaults: "2025"
+
+variables:
+  file_id: "{{inputs.entity_type}}_market_{{inputs.plan_type}}"
+  gcs_file: "gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/{{inputs.entity_type}}/{{inputs.plan_type}}/{{vars.file_id}}.parquet"
+  table: "{{kv('GCP_DATASET')}}.{{inputs.entity_type}}_market_{{inputs.plan_type}}_{{inputs.plan_year}}"
+  data: "{{ outputs.parquet_output.outputFiles[inputs.entity_type ~ '_market_' ~ inputs.plan_type ~ '.parquet'] }}"
+
+tasks:
+  - id: set_label
+    type: io.kestra.plugin.core.execution.Labels
+    labels:
+      plan_type: "{{inputs.plan_type}}"
+      plan_year: "{{inputs.plan_year}}"
+      entity_type: "{{inputs.entity_type}}"
+      file_id: "{{ vars.file_id }}"
+
+  - id: get_zipfile
+    type: io.kestra.plugin.core.http.Download
+    uri: https://data.healthcare.gov/datafile/py{{inputs.plan_year}}/{{ render(vars.file_id) }}.zip
+
+  - id: unzip
+    type: io.kestra.plugin.compress.ArchiveDecompress
+    algorithm: ZIP
+    from: "{{ outputs.get_zipfile.uri }}"
+
+  - id: parquet_output
+    type: io.kestra.plugin.scripts.python.Script
+    warningOnStdErr: false
+    beforeCommands:
+      - pip install openpyxl pyarrow
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+    containerImage: ghcr.io/kestra-io/pydata:latest
+    env:
+      FILE_ID: "{{ render(vars.file_id) }}"
+    inputFiles: "{{ outputs.unzip.files }}"
+    script: |
+      import os
+      import pandas as pd
+      file_id = os.environ["FILE_ID"]
+      # create a variable that converts file_id to camel case
+      sheet_name = '_'.join([word.capitalize() for word in file_id.split('_')])
+      file = f"{file_id}.xlsx"
+      df = pd.read_excel(file, sheet_name=0, header=1)
+      #rename columns
+      df.columns = df.columns.str.replace(" ", "_").str.lower()
+      # move column names not be beginning with a number
+      cols = df.columns.tolist()
+      cols = [col.replace("-", "") for col in cols]
+      # remove special characters
+      cols = [col.replace("(", "") for col in cols]
+      cols = [col.replace(")", "") for col in cols]
+      cols = [col.replace("+", "_") for col in cols]
+      cols = [col.replace(",", "") for col in cols]
+      # remove extra underscores
+      cols = [col.replace("__", "_") for col in cols]
+      # remove leading and trailing underscores
+      cols = [col.strip("_") for col in cols]
+      # remove leading and trailing whitespace
+      cols = [col.strip() for col in cols]
+      cols = [col for col in cols if not col[0].isdigit()] + [col for col in cols if col[0].isdigit()]
+      # replace digit with letter in column names such as 73 seventy three
+      cols = [col.replace("73", "seventy_three") for col in cols]
+      cols = [col.replace("87", "eighty_seven") for col in cols]
+      cols = [col.replace("94", "ninety_four") for col in cols]
+      cols = [col.replace("014", "fourteen") for col in cols]
+      cols = [col.replace("18", "eighteen") for col in cols]
+      cols = [col.replace("21", "twenty_one") for col in cols]
+      cols = [col.replace("27", "twenty_seven") for col in cols]
+      cols = [col.replace("30", "thirty") for col in cols]
+      cols = [col.replace("40", "forty") for col in cols]
+      cols = [col.replace("50", "fifty") for col in cols]
+      cols = [col.replace("60", "sixty") for col in cols]
+      cols = [col.replace("1", "one") for col in cols]
+      cols = [col.replace("2", "two") for col in cols]
+      cols = [col.replace("3", "three") for col in cols]
+      df.columns = cols
+      df.to_parquet(f"{file_id}.parquet")
+    outputFiles:
+      - "*.parquet"
+
+  - id: upload_to_gcs
+    type: io.kestra.plugin.gcp.gcs.Upload
+    from: "{{render(vars.data)}}"
+    to: "{{render(vars.gcs_file)}}"
+
+  - id: create_external_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`
+       OPTIONS (
+         format = 'PARQUET',
+         uris = ['{{render(vars.gcs_file)}}']
+       );
+
+  - id: if_individual_market_medical
+    description: Create external table for individual market medical data
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{inputs.plan_type == 'medical' and inputs.entity_type == 'individual'}}"
+    then:
+      - id: create_individual_market_medical_data_external_table
+        type: io.kestra.plugin.gcp.bigquery.Query
+        sql: |
+          CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.individual_market_medical_data_ext` 
+          (
+          state_code STRING,
+          fips_county_code INT64,
+          county_name STRING,
+          metal_level STRING,
+          issuer_name STRING,
+          hios_issuer_id INT64,
+          plan_id_standard_component STRING,
+          plan_marketing_name STRING,
+          standardized_plan_option STRING,
+          plan_type STRING,
+          rating_area STRING,
+          child_only_offering STRING,
+          source STRING,
+          customer_service_phone_number_local STRING,
+          customer_service_phone_number_toll_free STRING,
+          customer_service_phone_number_tty STRING,
+          network_url STRING,
+          plan_brochure_url STRING,
+          summary_of_benefits_url STRING,
+          drug_formulary_url STRING,
+          adult_dental STRING,
+          child_dental STRING,
+          ehb_percent_of_total_premium STRING,
+          premium_scenarios FLOAT64,
+          premium_child_age_fourteen FLOAT64,
+          premium_child_age_eighteen FLOAT64,
+          premium_adult_individual_age_twenty_one FLOAT64,
+          premium_adult_individual_age_twenty_seven FLOAT64,
+          premium_adult_individual_age_thirty FLOAT64,
+          premium_adult_individual_age_forty FLOAT64,
+          premium_adult_individual_age_fifty FLOAT64,
+          premium_adult_individual_age_sixty FLOAT64,
+          premium_couple_twenty_one FLOAT64,
+          premium_couple_thirty FLOAT64,
+          premium_couple_forty FLOAT64,
+          premium_couple_fifty FLOAT64,
+          premium_couple_sixty FLOAT64,
+          couple_one_child_age_twenty_one FLOAT64,
+          couple_one_child_age_thirty FLOAT64,
+          couple_one_child_age_forty FLOAT64,
+          couple_one_child_age_fifty FLOAT64,
+          couple_two_children_age_twenty_one FLOAT64,
+          couple_two_children_age_thirty FLOAT64,
+          couple_two_children_age_forty FLOAT64,
+          couple_two_children_age_fifty FLOAT64,
+          couple_three_or_more_children_age_twenty_one FLOAT64,
+          couple_three_or_more_children_age_thirty FLOAT64,
+          couple_three_or_more_children_age_forty FLOAT64,
+          couple_three_or_more_children_age_fifty FLOAT64,
+          individual_one_child_age_twenty_one FLOAT64,
+          individual_one_child_age_thirty FLOAT64,
+          individual_one_child_age_forty FLOAT64,
+          individual_one_child_age_fifty FLOAT64,
+          individual_two_children_age_twenty_one FLOAT64,
+          individual_two_children_age_thirty FLOAT64,
+          individual_two_children_age_forty FLOAT64,
+          individual_two_children_age_fifty FLOAT64,
+          individual_three_or_more_children_age_twenty_one FLOAT64,
+          individual_three_or_more_children_age_thirty FLOAT64,
+          individual_three_or_more_children_age_forty FLOAT64,
+          individual_three_or_more_children_age_fifty FLOAT64,
+          standard_plan_cost_sharing FLOAT64,
+          medical_deductible_individual_standard STRING,
+          drug_deductible_individual_standard STRING,
+          medical_deductible_family_standard STRING,
+          drug_deductible_family_standard STRING,
+          medical_deductible_family_per_person_standard STRING,
+          drug_deductible_family_per_person_standard STRING,
+          medical_maximum_out_of_pocket_individual_standard STRING,
+          drug_maximum_out_of_pocket_individual_standard STRING,
+          medical_maximum_out_of_pocket_family_standard STRING,
+          drug_maximum_out_of_pocket_family_standard STRING,
+          medical_maximum_out_of_pocket_family_per_person_standard STRING,
+          drug_maximum_out_of_pocket_family_per_person_standard STRING,
+          primary_care_physician_standard STRING,
+          specialist_standard STRING,
+          emergency_room_standard STRING,
+          inpatient_facility_standard STRING,
+          inpatient_physician_standard STRING,
+          generic_drugs_standard STRING,
+          preferred_brand_drugs_standard STRING,
+          nonpreferred_brand_drugs_standard STRING,
+          specialty_drugs_standard STRING,
+          medical_deductible_individual_seventy_three_percent FLOAT64,
+          drug_deductible_individual_seventy_three_percent STRING,
+          medical_deductible_family_seventy_three_percent STRING,
+          drug_deductible_family_seventy_three_percent STRING,
+          medical_deductible_family_per_person_seventy_three_percent STRING,
+          drug_deductible_family_per_person_seventy_three_percent STRING,
+          medical_maximum_out_of_pocket_individual_seventy_three_percent STRING,
+          drug_maximum_out_of_pocket_individual_seventy_three_percent STRING,
+          medical_maximum_out_of_pocket_family_seventy_three_percent STRING,
+          drug_maximum_out_of_pocket_family_seventy_three_percent STRING,
+          medical_maximum_out_of_pocket_family_per_person_seventy_three_percent STRING,
+          drug_maximum_out_of_pocket_family_per_person_seventy_three_percent STRING,
+          primary_care_physician_seventy_three_percent STRING,
+          specialist_seventy_three_percent STRING,
+          emergency_room_seventy_three_percent STRING,
+          inpatient_facility_seventy_three_percent STRING,
+          inpatient_physician_seventy_three_percent STRING,
+          generic_drugs_seventy_three_percent STRING,
+          preferred_brand_drugs_seventy_three_percent STRING,
+          nonpreferred_brand_drugs_seventy_three_percent STRING,
+          specialty_drugs_seventy_three_percent STRING,
+          medical_deductible_individual_eighty_seven_percent STRING,
+          drug_deductible_individual_eighty_seven_percent FLOAT64,
+          medical_deductible_family_eighty_seven_percent STRING,
+          drug_deductible_family_eighty_seven_percent STRING,
+          medical_deductible_family_per_person_eighty_seven_percent STRING,
+          drug_deductible_family_per_person_eighty_seven_percent STRING,
+          medical_maximum_out_of_pocket_individual_eighty_seven_percent STRING,
+          drug_maximum_out_of_pocket_individual_eighty_seven_percent STRING,
+          medical_maximum_out_of_pocket_family_eighty_seven_percent STRING,
+          drug_maximum_out_of_pocket_family_eighty_seven_percent STRING,
+          medical_maximum_out_of_pocket_family_per_person_eighty_seven_percent STRING,
+          drug_maximum_out_of_pocket_family_per_person_eighty_seven_percent STRING,
+          primary_care_physician_eighty_seven_percent STRING,
+          specialist_eighty_seven_percent STRING,
+          emergency_room_eighty_seven_percent STRING,
+          inpatient_facility_eighty_seven_percent STRING,
+          inpatient_physician_eighty_seven_percent STRING,
+          generic_drugs_eighty_seven_percent STRING,
+          preferred_brand_drugs_eighty_seven_percent STRING,
+          nonpreferred_brand_drugs_eighty_seven_percent STRING,
+          specialty_drugs_eighty_seven_percent STRING,
+          medical_deductible_individual_ninety_four_percent STRING,
+          drug_deductible_individual_ninety_four_percent STRING,
+          medical_deductible_family_ninety_four_percent FLOAT64,
+          drug_deductible_family_ninety_four_percent STRING,
+          medical_deductible_family_per_person_ninety_four_percent STRING,
+          drug_deductible_family_per_person_ninety_four_percent STRING,
+          medical_maximum_out_of_pocket_individual_ninety_four_percent STRING,
+          drug_maximum_out_of_pocket_individual_ninety_four_percent STRING,
+          medical_maximum_out_of_pocket_family_ninety_four_percent STRING,
+          drug_maximum_out_of_pocket_family__ninety_four_percent STRING,
+          medical_maximum_out_of_pocket_family_per_person_ninety_four_percent STRING,
+          drug_maximum_out_of_pocket_family_per_person_ninety_four_percent STRING,
+          primary_care_physician_ninety_four_percent STRING,
+          specialist_ninety_four_percent STRING,
+          emergency_room_ninety_four_percent STRING,
+          inpatient_facility_ninety_four_percent STRING,
+          inpatient_physician_ninety_four_percent STRING,
+          generic_drugs_ninety_four_percent STRING,
+          preferred_brand_drugs_ninety_four_percent STRING,
+          nonpreferred_brand_drugs_ninety_four_percent STRING,
+          specialty_drugs_ninety_four_percent STRING,
+          seventy_three_percent_actuarial_value_silver_plan_cost_sharing STRING,
+          eighty_seven_percent_actuarial_value_silver_plan_cost_sharing STRING,
+          ninety_four_percent_actuarial_value_silver_plan_cost_sharing STRING,
+          formatted_date date,
+          )
+          PARTITION by formatted_date
+          cluster by state_code, fips_county_code;
+
+      - id: insert_individual_market_medical_data
+        type: io.kestra.plugin.gcp.bigquery.Query
+        sql: |
+          INSERT INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.individual_market_medical_data_ext`
+          SELECT *, DATE(CAST("{{inputs.plan_year}}" AS INT64), 12, 31)  AS formatted_date FROM `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`;
+
+  - id: if_shop_market_medical
+    description: Create external table for individual market medical data
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{inputs.plan_type == 'medical' and inputs.entity_type == 'shop'}}"
+    then:
+      - id: create_shop_market_medical_data_external_table
+        type: io.kestra.plugin.gcp.bigquery.Query
+        sql: |
+          CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.shop_market_medical_data_ext` 
+          (
+          state_code STRING,
+          fips_county_code INT64,
+          county_name STRING,
+          metal_level STRING,
+          issuer_name STRING,
+          hios_issuer_id INT64,
+          plan_id_standard_component STRING,
+          plan_marketing_name STRING,
+          plan_type STRING,
+          rating_area STRING,
+          child_only_offering STRING,
+          source STRING,
+          customer_service_phone_number_local STRING,
+          customer_service_phone_number_toll_free STRING,
+          customer_service_phone_number_tty STRING,
+          network_url STRING,
+          plan_brochure_url STRING,
+          summary_of_benefits_url STRING,
+          drug_formulary_url STRING,
+          adult_dental FLOAT64,
+          child_dental STRING,
+          premium_scenarios FLOAT64,
+          premium_child_age_fourteen FLOAT64,
+          premium_child_age_eighteen FLOAT64,
+          premium_adult_individual_age_twenty_one FLOAT64,
+          premium_adult_individual_age_twenty_seven FLOAT64,
+          premium_adult_individual_age_thirty FLOAT64,
+          premium_adult_individual_age_forty FLOAT64,
+          premium_adult_individual_age_fifty FLOAT64,
+          premium_adult_individual_age_sixty FLOAT64,
+          premium_couple_twenty_one FLOAT64,
+          premium_couple_thirty FLOAT64,
+          premium_couple_forty FLOAT64,
+          premium_couple_fifty FLOAT64,
+          premium_couple_sixty FLOAT64,
+          couple_one_child_age_twenty_one FLOAT64,
+          couple_one_child_age_thirty FLOAT64,
+          couple_one_child_age_forty FLOAT64,
+          couple_one_child_age_fifty FLOAT64,
+          couple_two_children_age_twenty_one FLOAT64,
+          couple_two_children_age_thirty FLOAT64,
+          couple_two_children_age_forty FLOAT64,
+          couple_two_children_age_fifty FLOAT64,
+          couple_three_or_more_children_age_twenty_one FLOAT64,
+          couple_three_or_more_children_age_thirty FLOAT64,
+          couple_three_or_more_children_age_forty FLOAT64,
+          couple_three_or_more_children_age_fifty FLOAT64,
+          individual_one_child_age_twenty_one FLOAT64,
+          individual_one_child_age_thirty FLOAT64,
+          individual_one_child_age_forty FLOAT64,
+          individual_one_child_age_fifty FLOAT64,
+          individual_two_children_age_twenty_one FLOAT64,
+          individual_two_children_age_thirty FLOAT64,
+          individual_two_children_age_forty FLOAT64,
+          individual_two_children_age_fifty FLOAT64,
+          individual_three_or_more_children_age_twenty_one FLOAT64,
+          individual_three_or_more_children_age_thirty FLOAT64,
+          individual_three_or_more_children_age_forty FLOAT64,
+          individual_three_or_more_children_age_fifty FLOAT64,
+          standard_plan_cost_sharing FLOAT64,
+          medical_deductible_individual_standard STRING,
+          drug_deductible_individual_standard STRING,
+          medical_deductible_family_standard STRING,
+          drug_deductible_family_standard STRING,
+          medical_deductible_family_per_person_standard STRING,
+          drug_deductible_family_per_person_standard STRING,
+          medical_maximum_out_of_pocket_individual_standard STRING,
+          drug_maximum_out_of_pocket_individual_standard STRING,
+          medical_maximum_out_of_pocket_family_standard STRING,
+          drug_maximum_out_of_pocket_family_standard STRING,
+          medical_maximum_out_of_pocket_family_per_person_standard STRING,
+          drug_maximum_out_of_pocket_family_per_person_standard STRING,
+          primary_care_physician_standard STRING,
+          specialist_standard STRING,
+          emergency_room_standard STRING,
+          inpatient_facility_standard STRING,
+          inpatient_physician_standard STRING,
+          generic_drugs_standard STRING,
+          preferred_brand_drugs_standard STRING,
+          nonpreferred_brand_drugs_standard STRING,
+          specialty_drugs_standard STRING,
+          formatted_date date,
+          )
+          PARTITION by formatted_date
+          cluster by state_code, fips_county_code;
+
+      - id: insert_shop_market_medical_data
+        type: io.kestra.plugin.gcp.bigquery.Query
+        sql: |
+          INSERT INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.shop_market_medical_data_ext`
+          SELECT *, DATE(CAST("{{inputs.plan_year}}" AS INT64), 12, 31)  AS formatted_date FROM `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`;
+  
+  - id: purge_files
+    type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
+    description: If you'd like to explore Kestra outputs, disable it.
+    disabled: false
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{kv('GCP_CREDS')}}"
+      projectId: "{{kv('GCP_PROJECT_ID')}}"
+      location: "{{kv('GCP_LOCATION')}}"
+      bucket: "{{kv('GCP_BUCKET_NAME')}}"
