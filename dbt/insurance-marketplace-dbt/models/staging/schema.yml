@@ -1,0 +1,40 @@
+version: 2
+
+sources:
+  - name: insurance_marketplace_source
+    database: "{{ env_var('DBT_BIGQUERY_PROJECT', 'vibrant-mantis-376307') }}"
+    schema:   "{{ env_var('DBT_BIGQUERY_SOURCE_DATASET', 'insurance_dataset_376307') }}"
+      # loaded_at_field: record_loaded_at
+    tables:
+      - name: individual_market_dental_data
+        description: "Staging table for individual market dental data"
+
+
+models:
+    - name: stg_individual_market_dental_data
+      description: "Staging model for individual market dental data"
+      config:
+        materialized: view
+      columns:
+        - name: id
+          description: "Unique identifier for the record"
+        - name: state_code
+          description: "State code for the insurance plan"
+        - name: fips_county_code
+          description: "FIPS county code for the location"
+        - name: county_name
+          description: "Name of the county"
+        - name: metal_level
+          description: "Metal level of the insurance plan"
+        - name: issuer_name
+          description: "Name of the insurance issuer"
+        - name: hios_issuer_id
+          description: "HIOS issuer identifier"
+        - name: plan_id_standard_component
+          description: "Standard component ID of the plan"
+        - name: plan_marketing_name
+          description: "Marketing name of the insurance plan"
+        - name: plan_type
+          description: "Type of the insurance plan"
+        - name: rating_area
+          description: "Rating area for the insurance plan"
