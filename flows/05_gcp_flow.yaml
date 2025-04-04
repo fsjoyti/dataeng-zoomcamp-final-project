@@ -1081,6 +1081,50 @@ tasks:
       INSERT INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.rate_puf`
       SELECT *, DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01)  AS formatted_date FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.rate_puf_{{inputs.plan_year}}_ext`;
 
+  - id: sync
+    type: io.kestra.plugin.git.SyncNamespaceFiles
+    url: https://github.com/fsjoyti/dataeng-zoomcamp-final-project
+    branch: main
+    namespace: "{{flow.namespace}}"
+    gitDirectory: dbt/insurance-marketplace-dbt # The directory where the dbt project files are located in the git repo
+    dryRun: false
+    # disabled: true # this Git Sync is needed only when running it the first time, afterwards the task can be disabled
+
+  - id: dbt-build
+    type: io.kestra.plugin.dbt.cli.DbtCLI
+    env:
+      DBT_DATABASE: "{{kv('GCP_PROJECT_ID')}}"
+      DBT_SCHEMA: "{{kv('GCP_DATASET')}}"
+    namespaceFiles:
+      enabled: true
+    containerImage: ghcr.io/kestra-io/dbt-bigquery:latest
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+    inputFiles:
+      sa.json: "{{kv('GCP_CREDS')}}"
+    commands:
+      - dbt deps
+      - dbt build
+    storeManifest:
+      key: manifest.json
+      namespace: "{{ flow.namespace }}"
+    profiles:
+      - name: default
+        target: dev
+        outputs:
+          dev:
+            type: bigquery
+            method: service-account
+            project: "{{kv('GCP_PROJECT_ID')}}"
+            dataset: "{{kv('GCP_DATASET')}}"
+            location: "{{kv('GCP_LOCATION')}}"
+            keyfile:  sa.json # this file will be mounted in the container from the inputFiles above
+            priority: interactive # this is required for dbt to work in interactive mode, otherwise it will fail with a timeout error
+            threads: 16
+            timeout_seconds: 300 # increase the timeout for long running queries, adjust as needed based on your workload
+            fixed_retries: 1 # retry once on failure, this is useful for transient errors
+          target: dev # this is the target that will be used by dbt CLI commands, it should match the output above
+
   - id: purge_files
     type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
     description: If you'd like to explore Kestra outputs, disable it.
