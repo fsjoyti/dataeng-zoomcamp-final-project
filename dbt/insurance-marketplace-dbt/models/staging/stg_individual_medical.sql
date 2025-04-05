@@ -1,10 +1,10 @@
 {{ config(materialized='view') }}
 
-with staging_individual_dental as (
+with staging_individual_medical as (
 
     select
     *
-    from {{ source('insurance_marketplace_source', 'individual_market_dental_data') }}
+    from {{ source('insurance_marketplace_source', 'individual_market_medical_data') }}
    
 
 )
@@ -22,8 +22,8 @@ with staging_individual_dental as (
         child_only_offering as child_only_plan,
         'individual' as market_coverage_type, -- Static value for plan category as 'individual'
         extract (YEAR from formatted_date) as plan_year, -- Extracting the year from the formatted date for clarity,
-        true as dental_only_plan -- Static value indicating this is a dental-only plan
-from staging_individual_dental
+        false as dental_only_plan -- Static value indicating this is a dental-only plan
+from staging_individual_medical
 
 {% if var('is_test_run', default=true) %}
 

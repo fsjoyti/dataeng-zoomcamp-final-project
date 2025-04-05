@@ -8,6 +8,14 @@ sources:
     tables:
       - name: individual_market_dental_data
         description: "Staging table for individual market dental data"
+      - name: shop_market_dental_data
+        description: "Staging table for shop market dental data"
+      - name: individual_market_medical_data
+        description: "Staging table for individual market medical data"
+      - name: shop_market_medical_data
+        description: "Staging table for shop market medical data"
+      - name: benefits_and_cost_sharing_puf
+        description: "Benefits and cost sharing PUF data" # This is optional, included for completeness
 
 
 models:
@@ -16,8 +24,6 @@ models:
       config:
         materialized: view
       columns:
-        - name: id
-          description: "Unique identifier for the record"
         - name: state_code
           description: "State code for the insurance plan"
         - name: fips_county_code
@@ -38,3 +44,112 @@ models:
           description: "Type of the insurance plan"
         - name: rating_area
           description: "Rating area for the insurance plan"
+        - name: child_only_plan
+          description: "Indicates if the plan is a child-only plan (boolean)"
+        - name: market_coverage_type
+          description: "Market coverage type (e.g., individual, small group)"
+        - name: plan_year
+          description: "Year of the insurance plan"
+        - name: dental_only_plan
+          description: "Indicates if the plan is a dental-only plan (boolean)"
+
+    - name: stg_shop_market_dental_data
+      description: "Staging model for shop market dental data"
+      config:
+        materialized: view
+      columns:
+        - name: state_code
+          description: "State code for the insurance plan"
+        - name: fips_county_code
+          description: "FIPS county code for the location"
+        - name: county_name
+          description: "Name of the county"
+        - name: metal_level
+          description: "Metal level of the insurance plan"
+        - name: issuer_name
+          description: "Name of the insurance issuer"
+        - name: hios_issuer_id
+          description: "HIOS issuer identifier"
+        - name: plan_id_standard_component
+          description: "Standard component ID of the plan"
+        - name: plan_marketing_name
+          description: "Marketing name of the insurance plan"
+        - name: plan_type
+          description: "Type of the insurance plan"
+        - name: rating_area
+          description: "Rating area for the insurance plan"
+        - name: child_only_plan
+          description: "Indicates if the plan is a child-only plan (boolean)"
+        - name: market_coverage_type
+          description: "Market coverage type (e.g., individual, small group)"
+        - name: plan_year
+          description: "Year of the insurance plan"
+        - name: dental_only_plan
+          description: "Indicates if the plan is a dental-only plan (boolean)"
+
+    - name: stg_individual_market_medical_data
+      description: "Staging model for individual market medical data (not used in this example)"
+      config:
+        materialized: view
+      columns:
+        - name: state_code
+          description: "State code for the insurance plan"
+        - name: fips_county_code
+          description: "FIPS county code for the location"
+        - name: county_name
+          description: "Name of the county"
+        - name: metal_level
+          description: "Metal level of the insurance plan"
+        - name: issuer_name
+          description: "Name of the insurance issuer"
+        - name: hios_issuer_id
+          description: "HIOS issuer identifier"
+        - name: plan_id_standard_component
+          description: "Standard component ID of the plan"
+        - name: plan_marketing_name
+          description: "Marketing name of the insurance plan"
+        - name: plan_type
+          description: "Type of the insurance plan"
+        - name: rating_area
+          description: "Rating area for the insurance plan"
+        - name: child_only_plan
+          description: "Indicates if the plan is a child-only plan (boolean)"
+        - name: market_coverage_type
+          description: "Market coverage type (e.g., individual, small group)"
+        - name: plan_year
+          description: "Year of the insurance plan"
+        - name: dental_only_plan
+          description: "Indicates if the plan is a dental-only plan (boolean)"    
+    - name: stg_shop_market_medical_data
+      description: "Staging model for shop market medical data (not used in this example)"
+      config:
+        materialized: view
+      columns:
+        - name: state_code
+          description: "State code for the insurance plan"
+        - name: fips_county_code
+          description: "FIPS county code for the location"
+        - name: county_name
+          description: "Name of the county"
+        - name: metal_level
+          description: "Metal level of the insurance plan"
+        - name: issuer_name
+          description: "Name of the insurance issuer"
+        - name: hios_issuer_id
+          description: "HIOS issuer identifier"
+        - name: plan_id_standard_component
+          description: "Standard component ID of the plan"
+        - name: plan_marketing_name
+          description: "Marketing name of the insurance plan"
+        - name: plan_type
+          description: "Type of the insurance plan"
+        - name: rating_area
+          description: "Rating area for the insurance plan"
+        - name: child_only_plan
+          description: "Indicates if the plan is a child-only plan (boolean)"
+        - name: market_coverage_type
+          description: "Market coverage type (e.g., individual, small group)"
+        - name: plan_year
+          description: "Year of the insurance plan"
+        - name: dental_only_plan
+          description: "Indicates if the plan is a dental-only plan (boolean)"
