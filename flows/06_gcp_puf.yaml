@@ -1,0 +1,712 @@
+id: 06_puf
+namespace: zoomcamp
+
+inputs:
+  - id: plan_year
+    type: SELECT
+    displayName: Select plan year
+    values: [ "2022", "2023", "2024", "2025" ]
+    description: Select the year for which you want to get the data
+    defaults: "2025"
+
+tasks:
+  - id: set_label
+    type: io.kestra.plugin.core.execution.Labels
+    labels:
+      plan_year: "{{inputs.plan_year}}"
+
+
+  - id: get_benefits_and_cost_sharing_puf
+    type: io.kestra.plugin.core.http.Download
+    description: Download the benefits and cost sharing puf file
+    uri: https://download.cms.gov/marketplace-puf/{{inputs.plan_year}}/benefits-and-cost-sharing-puf.zip
+
+  - id: unzip_benefits_and_cost_sharing_puf
+    type: io.kestra.plugin.compress.ArchiveDecompress
+    description: Unzip the benefits and cost sharing puf file
+    algorithm: ZIP
+    from: "{{ outputs.get_benefits_and_cost_sharing_puf.uri}}"
+
+  - id: rename_benefits_and_cost_sharing_puf
+    type: io.kestra.plugin.scripts.python.Script
+    inputFiles: "{{ outputs.unzip_benefits_and_cost_sharing_puf.files }}"
+    script: |
+      import os
+      for file in os.listdir('.'):
+          if file.endswith('.csv'):
+              os.rename(file, 'benefits-and-cost-sharing-puf.csv')
+    outputFiles:
+      - "*.csv"
+
+  - id: upload_benefits_and_cost_sharing_puf
+    type: io.kestra.plugin.gcp.gcs.Upload
+    description: Upload the benefits and cost sharing puf file to GCS
+    from: "{{ outputs.rename_benefits_and_cost_sharing_puf.outputFiles['benefits-and-cost-sharing-puf.csv'] }}"
+    to: "gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/benefits-and-cost-sharing-puf/{{inputs.plan_year}}_benefits-and-cost-sharing-puf.csv"
+
+  - id: create_benefits_and_cost_sharing_puf_external_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create temporary external table for benefits and cost sharing puf data
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.benefits_and_cost_sharing_puf_{{inputs.plan_year}}_ext`
+      OPTIONS (
+        format = 'CSV',
+        uris = ['gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/benefits-and-cost-sharing-puf/*.csv']
+      );
+
+  - id: create_benefits_and_cost_sharing_puf_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create external table for benefits and cost sharing puf data
+    sql: |
+      CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.benefits_and_cost_sharing_puf` (
+        BusinessYear INT64,
+        StateCode STRING,
+        IssuerId INT64,
+        SourceName STRING,
+        ImportDate TIMESTAMP,
+        StandardComponentId STRING,
+        PlanId STRING,
+        BenefitName STRING,
+        CopayInnTier1 STRING,
+        CopayInnTier2 STRING,
+        CopayOutofNet STRING,
+        CoinsInnTier1 STRING,
+        CoinsInnTier2 STRING,
+        CoinsOutofNet STRING,
+        IsEHB BOOL,
+        IsCovered STRING,
+        QuantLimitOnSvc BOOL,
+        LimitQty FLOAT64,
+        LimitUnit STRING,
+        Exclusions STRING,
+        Explanation STRING,
+        EHBVarReason STRING,
+        IsExclFromInnMOOP BOOL,
+        IsExclFromOonMOOP BOOL,
+        formatted_date date,
+        )
+        PARTITION by formatted_date;
+  
+  - id: insert_benefits_and_cost_sharing_puf_data
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Insert data into the benefits and cost sharing puf external table
+    sql: |
+      DELETE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.benefits_and_cost_sharing_puf` where formatted_date = DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01);
+      INSERT INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.benefits_and_cost_sharing_puf`
+      SELECT  CAST(BusinessYear AS INT64) AS BusinessYear,
+      CAST(StateCode AS STRING) AS StateCode,
+      CAST(IssuerId AS INT64) AS IssuerId,
+      CAST(SourceName AS STRING) AS SourceName,
+      CAST(ImportDate AS TIMESTAMP) AS ImportDate,
+      CAST(StandardComponentId AS STRING) AS StandardComponentId,
+      CAST(PlanId AS STRING) AS PlanId,
+      CAST(BenefitName AS STRING) AS BenefitName,
+      CAST(CopayInnTier1 AS STRING) AS CopayInnTier1,
+      CAST(CopayInnTier2 AS STRING) AS CopayInnTier2,
+      CAST(CopayOutofNet AS STRING) AS CopayOutofNet,
+      CAST(CoinsInnTier1 AS STRING) AS CoinsInnTier1,
+      CAST(CoinsInnTier2 AS STRING) AS CoinsInnTier2,
+      CAST(CoinsOutofNet AS STRING) AS CoinsOutofNet,
+      CAST(IsEHB AS BOOL) AS IsEHB,
+      CAST(IsCovered AS STRING) AS IsCovered,
+      CAST(QuantLimitOnSvc AS BOOL) AS QuantLimitOnSvc,
+      CAST(LimitQty AS FLOAT64) AS LimitQty,
+      CAST(LimitUnit AS STRING) AS LimitUnit,
+      CAST(Exclusions AS STRING) AS Exclusions,
+      CAST(Explanation AS STRING) AS Explanation,
+      CAST(EHBVarReason AS STRING) AS EHBVarReason,
+      CAST(IsExclFromInnMOOP AS BOOL) AS IsExclFromInnMOOP,
+      CAST(IsExclFromOonMOOP AS BOOL) AS IsExclFromOonMOOP, 
+      DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01)  AS formatted_date FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.benefits_and_cost_sharing_puf_{{inputs.plan_year}}_ext`;
+
+  - id: get_plan_attributes_puf
+    type: io.kestra.plugin.core.http.Download
+    description: Download the plan attributes puf file
+    uri: https://download.cms.gov/marketplace-puf/{{inputs.plan_year}}/plan-attributes-puf.zip
+
+  - id: unzip_plan_attributes_puf
+    type: io.kestra.plugin.compress.ArchiveDecompress
+    description: Unzip the plan attributes puf file
+    algorithm: ZIP
+    from: "{{ outputs.get_plan_attributes_puf.uri }}"
+
+  - id: rename_plan_attributes_puf
+    type: io.kestra.plugin.scripts.python.Script
+    inputFiles: "{{ outputs.unzip_plan_attributes_puf.files }}"
+    script: |
+      import os
+      for file in os.listdir('.'):
+          if file.endswith('.csv'):
+              os.rename(file, 'plan-attributes-puf.csv')
+    outputFiles:
+      - "*.csv"
+
+  - id: upload_plan_attributes_puf
+    type: io.kestra.plugin.gcp.gcs.Upload
+    description: Upload the plan attributes puf file to GCS
+    from: "{{ outputs.rename_plan_attributes_puf.outputFiles['plan-attributes-puf.csv'] }}"
+    to: "gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/plan-attributes-puf/{{inputs.plan_year}}_plan-attributes-puf.csv"
+
+  - id: create_plan_attributes_puf_external_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create temporary external table for benefits and cost sharing puf data
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.plan_attributes_puf_{{inputs.plan_year}}_ext`
+      (
+        BusinessYear INT64,
+        StateCode STRING,
+        IssuerId INT64,
+        IssuerMarketPlaceMarketingName STRING,
+        SourceName STRING,
+        ImportDate STRING,
+        MarketCoverage STRING,
+        DentalOnlyPlan BOOL,
+        StandardComponentId STRING,
+        PlanMarketingName STRING,
+        HIOSProductId STRING,
+        NetworkId STRING,
+        ServiceAreaId STRING,
+        FormularyId STRING,
+        IsNewPlan STRING,
+        PlanType STRING,
+        MetalLevel STRING,
+        UniquePlanDesign BOOL,
+        QHPNonQHPTypeId STRING,
+        IsNoticeRequiredForPregnancy BOOL,
+        IsReferralRequiredForSpecialist BOOL,
+        SpecialistRequiringReferral STRING,
+        PlanLevelExclusions STRING,
+        IndianPlanVariationEstimatedAdvancedPaymentAmountPerEnrollee STRING,
+        CompositeRatingOffered BOOL,
+        ChildOnlyOffering STRING,
+        ChildOnlyPlanId BOOL,
+        WellnessProgramOffered STRING,
+        DiseaseManagementProgramsOffered STRING,
+        EHBPercentTotalPremium FLOAT64,
+        EHBPediatricDentalApportionmentQuantity FLOAT64,
+        IsGuaranteedRate STRING,
+        PlanEffectiveDate STRING,
+        PlanExpirationDate STRING,
+        OutOfCountryCoverage BOOL,
+        OutOfCountryCoverageDescription STRING,
+        OutOfServiceAreaCoverage BOOL,
+        OutOfServiceAreaCoverageDescription STRING,
+        NationalNetwork BOOL,
+        URLForEnrollmentPayment STRING,
+        FormularyURL STRING,
+        PlanId STRING,
+        PlanVariantMarketingName STRING,
+        CSRVariationType STRING,
+        IssuerActuarialValue FLOAT64,
+        AVCalculatorOutputNumber FLOAT64,
+        MedicalDrugDeductiblesIntegrated BOOL,
+        MedicalDrugMaximumOutofPocketIntegrated BOOL,
+        MultipleInNetworkTiers BOOL,
+        FirstTierUtilization FLOAT64,
+        SecondTierUtilization FLOAT64,
+        SBCHavingaBabyDeductible INT64,
+        SBCHavingaBabyCopayment INT64,
+        SBCHavingaBabyCoinsurance INT64,
+        SBCHavingaBabyLimit INT64,
+        SBCHavingDiabetesDeductible INT64,
+        SBCHavingDiabetesCopayment INT64,
+        SBCHavingDiabetesCoinsurance INT64,
+        SBCHavingDiabetesLimit INT64,
+        SBCHavingSimplefractureDeductible INT64,
+        SBCHavingSimplefractureCopayment INT64,
+        SBCHavingSimplefractureCoinsurance INT64,
+        SBCHavingSimplefractureLimit INT64,
+        SpecialtyDrugMaximumCoinsurance INT64,
+        InpatientCopaymentMaximumDays INT64,
+        BeginPrimaryCareCostSharingAfterNumberOfVisits INT64,
+        BeginPrimaryCareDeductibleCoinsuranceAfterNumberOfCopays INT64,
+        MEHBInnTier1IndividualMOOP STRING,
+        MEHBInnTier1FamilyPerPersonMOOP STRING,
+        MEHBInnTier1FamilyPerGroupMOOP STRING,
+        MEHBInnTier2IndividualMOOP STRING,
+        MEHBInnTier2FamilyPerPersonMOOP STRING,
+        MEHBInnTier2FamilyPerGroupMOOP STRING,
+        MEHBOutOfNetIndividualMOOP STRING,
+        MEHBOutOfNetFamilyPerPersonMOOP STRING,
+        MEHBOutOfNetFamilyPerGroupMOOP STRING,
+        MEHBCombInnOonIndividualMOOP STRING,
+        MEHBCombInnOonFamilyPerPersonMOOP STRING,
+        MEHBCombInnOonFamilyPerGroupMOOP STRING,
+        DEHBInnTier1IndividualMOOP INT64,
+        DEHBInnTier1FamilyPerPersonMOOP STRING,
+        DEHBInnTier1FamilyPerGroupMOOP STRING,
+        DEHBInnTier2IndividualMOOP STRING,
+        DEHBInnTier2FamilyPerPersonMOOP STRING,
+        DEHBInnTier2FamilyPerGroupMOOP STRING,
+        DEHBOutOfNetIndividualMOOP STRING,
+        DEHBOutOfNetFamilyPerPersonMOOP STRING,
+        DEHBOutOfNetFamilyPerGroupMOOP STRING,
+        DEHBCombInnOonIndividualMOOP STRING,
+        DEHBCombInnOonFamilyPerPersonMOOP STRING,
+        DEHBCombInnOonFamilyPerGroupMOOP STRING,
+        TEHBInnTier1IndividualMOOP INT64,
+        TEHBInnTier1FamilyPerPersonMOOP STRING,
+        TEHBInnTier1FamilyPerGroupMOOP STRING,
+        TEHBInnTier2IndividualMOOP INT64,
+        TEHBInnTier2FamilyPerPersonMOOP STRING,
+        TEHBInnTier2FamilyPerGroupMOOP STRING,
+        TEHBOutOfNetIndividualMOOP STRING,
+        TEHBOutOfNetFamilyPerPersonMOOP STRING,
+        TEHBOutOfNetFamilyPerGroupMOOP STRING,
+        TEHBCombInnOonIndividualMOOP STRING,
+        TEHBCombInnOonFamilyPerPersonMOOP STRING,
+        TEHBCombInnOonFamilyPerGroupMOOP STRING,
+        MEHBDedInnTier1Individual STRING,
+        MEHBDedInnTier1FamilyPerPerson STRING,
+        MEHBDedInnTier1FamilyPerGroup STRING,
+        MEHBDedInnTier1Coinsurance FLOAT64,
+        MEHBDedInnTier2Individual STRING,
+        MEHBDedInnTier2FamilyPerPerson STRING,
+        MEHBDedInnTier2FamilyPerGroup STRING,
+        MEHBDedInnTier2Coinsurance FLOAT64,
+        MEHBDedOutOfNetIndividual STRING,
+        MEHBDedOutOfNetFamilyPerPerson STRING,
+        MEHBDedOutOfNetFamilyPerGroup STRING,
+        MEHBDedCombInnOonIndividual STRING,
+        MEHBDedCombInnOonFamilyPerPerson STRING,
+        MEHBDedCombInnOonFamilyPerGroup STRING,
+        DEHBDedInnTier1Individual STRING,
+        DEHBDedInnTier1FamilyPerPerson STRING,
+        DEHBDedInnTier1FamilyPerGroup STRING,
+        DEHBDedInnTier1Coinsurance FLOAT64,
+        DEHBDedInnTier2Individual STRING,
+        DEHBDedInnTier2FamilyPerPerson STRING,
+        DEHBDedInnTier2FamilyPerGroup STRING,
+        DEHBDedInnTier2Coinsurance FLOAT64,
+        DEHBDedOutOfNetIndividual STRING,
+        DEHBDedOutOfNetFamilyPerPerson STRING,
+        DEHBDedOutOfNetFamilyPerGroup STRING,
+        DEHBDedCombInnOonIndividual STRING,
+        DEHBDedCombInnOonFamilyPerPerson STRING,
+        DEHBDedCombInnOonFamilyPerGroup STRING,
+        TEHBDedInnTier1Individual INT64,
+        TEHBDedInnTier1FamilyPerPerson STRING,
+        TEHBDedInnTier1FamilyPerGroup STRING,
+        TEHBDedInnTier1Coinsurance FLOAT64,
+        TEHBDedInnTier2Individual INT64,
+        TEHBDedInnTier2FamilyPerPerson STRING,
+        TEHBDedInnTier2FamilyPerGroup STRING,
+        TEHBDedInnTier2Coinsurance FLOAT64,
+        TEHBDedOutOfNetIndividual STRING,
+        TEHBDedOutOfNetFamilyPerPerson STRING,
+        TEHBDedOutOfNetFamilyPerGroup STRING,
+        TEHBDedCombInnOonIndividual STRING,
+        TEHBDedCombInnOonFamilyPerPerson STRING,
+        TEHBDedCombInnOonFamilyPerGroup STRING,
+        IsHSAEligible BOOL,
+        HSAOrHRAEmployerContribution BOOL,
+        HSAOrHRAEmployerContributionAmount STRING,
+        URLForSummaryofBenefitsCoverage STRING,
+        PlanBrochure STRING
+        )
+      OPTIONS (
+        format = 'CSV',
+        allow_jagged_rows=true,
+        allow_quoted_newlines=true,
+        skip_leading_rows = 1,
+        uris = ['gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/plan-attributes-puf/*.csv']
+      );
+
+  - id: create_plan_attributes_puf_table 
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create external table for plan attributes puf data
+    sql: |
+      CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.plan_attributes_puf` (
+      BusinessYear INT64,
+      StateCode STRING,
+      IssuerId INT64,
+      IssuerMarketPlaceMarketingName STRING,
+      SourceName STRING,
+      ImportDate TIMESTAMP,
+      MarketCoverage STRING,
+      DentalOnlyPlan BOOL,
+      StandardComponentId STRING,
+      PlanMarketingName STRING,
+      HIOSProductId STRING,
+      NetworkId STRING,
+      ServiceAreaId STRING,
+      FormularyId STRING,
+      IsNewPlan STRING,
+      PlanType STRING,
+      MetalLevel STRING,
+      UniquePlanDesign BOOL,
+      QHPNonQHPTypeId STRING,
+      IsNoticeRequiredForPregnancy BOOL,
+      IsReferralRequiredForSpecialist BOOL,
+      SpecialistRequiringReferral STRING,
+      PlanLevelExclusions STRING,
+      IndianPlanVariationEstimatedAdvancedPaymentAmountPerEnrollee INT64,
+      CompositeRatingOffered BOOL,
+      ChildOnlyOffering STRING,
+      ChildOnlyPlanId BOOL,
+      WellnessProgramOffered BOOL,
+      DiseaseManagementProgramsOffered STRING,
+      EHBPercentTotalPremium FLOAT64,
+      EHBPediatricDentalApportionmentQuantity FLOAT64,
+      IsGuaranteedRate STRING,
+      PlanEffectiveDate DATE,
+      PlanExpirationDate DATE,
+      OutOfCountryCoverage BOOL,
+      OutOfCountryCoverageDescription STRING,
+      OutOfServiceAreaCoverage BOOL,
+      OutOfServiceAreaCoverageDescription STRING,
+      NationalNetwork BOOL,
+      URLForEnrollmentPayment STRING,
+      FormularyURL STRING,
+      PlanId STRING,
+      PlanVariantMarketingName STRING,
+      CSRVariationType STRING,
+      IssuerActuarialValue FLOAT64,
+      AVCalculatorOutputNumber FLOAT64,
+      MedicalDrugDeductiblesIntegrated BOOL,
+      MedicalDrugMaximumOutofPocketIntegrated BOOL,
+      MultipleInNetworkTiers BOOL,
+      FirstTierUtilization FLOAT64,
+      SecondTierUtilization FLOAT64,
+      SBCHavingaBabyDeductible INT64,
+      SBCHavingaBabyCopayment INT64,
+      SBCHavingaBabyCoinsurance INT64,
+      SBCHavingaBabyLimit INT64,
+      SBCHavingDiabetesDeductible INT64,
+      SBCHavingDiabetesCopayment INT64,
+      SBCHavingDiabetesCoinsurance INT64,
+      SBCHavingDiabetesLimit INT64,
+      SBCHavingSimplefractureDeductible INT64,
+      SBCHavingSimplefractureCopayment INT64,
+      SBCHavingSimplefractureCoinsurance INT64,
+      SBCHavingSimplefractureLimit INT64,
+      SpecialtyDrugMaximumCoinsurance INT64,
+      InpatientCopaymentMaximumDays INT64,
+      BeginPrimaryCareCostSharingAfterNumberOfVisits INT64,
+      BeginPrimaryCareDeductibleCoinsuranceAfterNumberOfCopays INT64,
+      IsHSAEligible BOOL,
+      HSAOrHRAEmployerContribution BOOL,
+      HSAOrHRAEmployerContributionAmount STRING,
+      URLForSummaryofBenefitsCoverage STRING,
+      PlanBrochure STRING,
+      formatted_date date,
+      )
+      PARTITION by formatted_date;
+
+  - id: insert_plan_attributes_puf_data
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Insert data into the plan attributes puf table
+    sql: |
+      DELETE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.plan_attributes_puf` where formatted_date = DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01);
+      INSERT INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.plan_attributes_puf`
+      SELECT distinct CAST(BusinessYear AS INT64) AS BusinessYear,
+      CAST(StateCode AS STRING) AS StateCode,
+      CAST(IssuerId AS INT64) AS IssuerId,
+      CAST(IssuerMarketPlaceMarketingName AS STRING) AS IssuerMarketPlaceMarketingName,
+      CAST(SourceName AS STRING) AS SourceName,
+      CASE
+        WHEN REGEXP_CONTAINS(ImportDate, r'((^\d{2})\/\d{2}\/\d{4})(\s)(\d{1,2}:\d{2})$') THEN PARSE_TIMESTAMP("%m/%d/%Y %H:%M", ImportDate)
+        WHEN REGEXP_CONTAINS(ImportDate, r'(^\d{4}-\d{2}-\d{2})(\s)(\d{2}:\d{2}:\d{2})') THEN PARSE_TIMESTAMP("%Y-%m-%d %H:%M:%S", SAFE_CAST(ImportDate AS STRING))
+        ELSE NULL
+      END AS ImportDate,
+        CAST(MarketCoverage AS STRING) AS MarketCoverage,
+        CAST(DentalOnlyPlan AS BOOL) AS DentalOnlyPlan,
+        CAST(StandardComponentId AS STRING) AS StandardComponentId,
+        CAST(PlanMarketingName AS STRING) AS PlanMarketingName,
+        CAST(HIOSProductId AS STRING) AS HIOSProductId,
+        CAST(NetworkId AS STRING) AS NetworkId,
+        CAST(ServiceAreaId AS STRING) AS ServiceAreaId,
+        CAST(FormularyId AS STRING) AS FormularyId,
+        CAST(IsNewPlan AS STRING) AS IsNewPlan,
+        CAST(PlanType AS STRING) AS PlanType,
+        CAST(MetalLevel AS STRING) AS MetalLevel,
+        CAST(UniquePlanDesign AS BOOL) AS UniquePlanDesign,
+        CAST(QHPNonQHPTypeId AS STRING) AS QHPNonQHPTypeId,
+        CAST(IsNoticeRequiredForPregnancy AS BOOL) AS IsNoticeRequiredForPregnancy,
+        CAST(IsReferralRequiredForSpecialist AS BOOL) AS IsReferralRequiredForSpecialist,
+        CAST(SpecialistRequiringReferral AS STRING) AS SpecialistRequiringReferral,
+        CAST(PlanLevelExclusions AS STRING) AS PlanLevelExclusions,
+        SAFE_CAST(IndianPlanVariationEstimatedAdvancedPaymentAmountPerEnrollee AS INT64) AS IndianPlanVariationEstimatedAdvancedPaymentAmountPerEnrollee,
+        CAST(CompositeRatingOffered AS BOOL) AS CompositeRatingOffered,
+        CAST(ChildOnlyOffering AS STRING) AS ChildOnlyOffering,
+        CAST(ChildOnlyPlanId AS BOOL) AS ChildOnlyPlanId,
+        CASE  
+        when CAST(WellnessProgramOffered AS STRING) = 'Yes' then TRUE
+        when CAST(WellnessProgramOffered AS STRING) = 'true' then TRUE
+        when CAST(WellnessProgramOffered AS STRING) = 'No' then FALSE
+        when CAST(WellnessProgramOffered AS STRING) = 'false' then FALSE
+        ELSE NULL END AS WellnessProgramOffered,
+        CAST(DiseaseManagementProgramsOffered AS STRING) AS DiseaseManagementProgramsOffered,
+        CAST(EHBPercentTotalPremium AS FLOAT64) AS EHBPercentTotalPremium,
+        CAST(EHBPediatricDentalApportionmentQuantity AS FLOAT64) AS EHBPediatricDentalApportionmentQuantity,
+        CAST(IsGuaranteedRate AS STRING) AS IsGuaranteedRate,
+        CASE
+          WHEN REGEXP_CONTAINS(PlanEffectiveDate, r'^\d{1,2}/\d{1,2}/\d{4}$') THEN PARSE_DATE('%m/%d/%Y', PlanEffectiveDate)
+          WHEN REGEXP_CONTAINS(PlanEffectiveDate, r'^\d{4}-\d{2}-\d{2}$') THEN PARSE_DATE('%Y-%m-%d', PlanEffectiveDate)
+          ELSE NULL
+      END AS PlanEffectiveDate,
+        CASE
+          WHEN REGEXP_CONTAINS(PlanExpirationDate, r'^\d{1,2}/\d{1,2}/\d{4}$') THEN PARSE_DATE('%m/%d/%Y', PlanExpirationDate)
+          WHEN REGEXP_CONTAINS(PlanExpirationDate, r'^\d{4}-\d{2}-\d{2}$') THEN PARSE_DATE('%Y-%m-%d', PlanExpirationDate)
+          ELSE NULL
+      END AS PlanExpirationDate,
+        CAST(OutOfCountryCoverage AS BOOL) AS OutOfCountryCoverage,
+        CAST(OutOfCountryCoverageDescription AS STRING) AS OutOfCountryCoverageDescription,
+        CAST(OutOfServiceAreaCoverage AS BOOL) AS OutOfServiceAreaCoverage,
+        CAST(OutOfServiceAreaCoverageDescription AS STRING) AS OutOfServiceAreaCoverageDescription,
+        CAST(NationalNetwork AS BOOL) AS NationalNetwork,
+        CAST(URLForEnrollmentPayment AS STRING) AS URLForEnrollmentPayment,
+        CAST(FormularyURL AS STRING) AS FormularyURL,
+        CAST(PlanId AS STRING) AS PlanId,
+        CAST(PlanVariantMarketingName AS STRING) AS PlanVariantMarketingName,
+        CAST(CSRVariationType AS STRING) AS CSRVariationType,
+        CAST(IssuerActuarialValue AS FLOAT64) AS IssuerActuarialValue,
+        CAST(AVCalculatorOutputNumber AS FLOAT64) AS AVCalculatorOutputNumber,
+        CAST(MedicalDrugDeductiblesIntegrated AS BOOL) AS MedicalDrugDeductiblesIntegrated,
+        CAST(MedicalDrugMaximumOutofPocketIntegrated AS BOOL) AS MedicalDrugMaximumOutofPocketIntegrated,
+        CAST(MultipleInNetworkTiers AS BOOL) AS MultipleInNetworkTiers,
+        CAST(FirstTierUtilization AS FLOAT64) AS FirstTierUtilization,
+        CAST(SecondTierUtilization AS FLOAT64) AS SecondTierUtilization,
+        CAST(SBCHavingaBabyDeductible AS INT64) AS SBCHavingaBabyDeductible,
+        CAST(SBCHavingaBabyCopayment AS INT64) AS SBCHavingaBabyCopayment,
+        CAST(SBCHavingaBabyCoinsurance AS INT64) AS SBCHavingaBabyCoinsurance,
+        CAST(SBCHavingaBabyLimit AS INT64) AS SBCHavingaBabyLimit,
+        CAST(SBCHavingDiabetesDeductible AS INT64) AS SBCHavingDiabetesDeductible,
+        CAST(SBCHavingDiabetesCopayment AS INT64) AS SBCHavingDiabetesCopayment,
+        CAST(SBCHavingDiabetesCoinsurance AS INT64) AS SBCHavingDiabetesCoinsurance,
+        CAST(SBCHavingDiabetesLimit AS INT64) AS SBCHavingDiabetesLimit,
+        CAST(SBCHavingSimplefractureDeductible AS INT64) AS SBCHavingSimplefractureDeductible,
+        CAST(SBCHavingSimplefractureCopayment AS INT64) AS SBCHavingSimplefractureCopayment,
+        CAST(SBCHavingSimplefractureCoinsurance AS INT64) AS SBCHavingSimplefractureCoinsurance,
+        CAST(SBCHavingSimplefractureLimit AS INT64) AS SBCHavingSimplefractureLimit,
+        CAST(SpecialtyDrugMaximumCoinsurance AS INT64) AS SpecialtyDrugMaximumCoinsurance,
+        CAST(InpatientCopaymentMaximumDays AS INT64) AS InpatientCopaymentMaximumDays,
+        CAST(BeginPrimaryCareCostSharingAfterNumberOfVisits AS INT64) AS BeginPrimaryCareCostSharingAfterNumberOfVisits,
+        CAST(BeginPrimaryCareDeductibleCoinsuranceAfterNumberOfCopays AS INT64) AS BeginPrimaryCareDeductibleCoinsuranceAfterNumberOfCopays,
+        CAST(IsHSAEligible AS BOOL) AS IsHSAEligible,
+        CAST(HSAOrHRAEmployerContribution AS BOOL) AS HSAOrHRAEmployerContribution,
+        CAST(HSAOrHRAEmployerContributionAmount AS STRING) AS HSAOrHRAEmployerContributionAmount,
+        CAST(URLForSummaryofBenefitsCoverage AS STRING) AS URLForSummaryofBenefitsCoverage,
+        CAST(PlanBrochure AS STRING) AS PlanBrochure,
+        DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01)  AS formatted_date FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.plan_attributes_puf_{{inputs.plan_year}}_ext`;
+
+  - id: get_service_area_puf
+    type: io.kestra.plugin.core.http.Download
+    description: Download the service areas puf file
+    uri: https://download.cms.gov/marketplace-puf/{{inputs.plan_year}}/service-area-puf.zip
+
+  - id: unzip_service_area_puf
+    type: io.kestra.plugin.compress.ArchiveDecompress
+    description: Unzip the service areas puf file
+    algorithm: ZIP
+    from: "{{ outputs.get_service_area_puf.uri }}"
+
+  - id: rename_service_area_puf
+    type: io.kestra.plugin.scripts.python.Script
+    inputFiles: "{{ outputs.unzip_service_area_puf.files }}"
+    script: |
+      import os
+      for file in os.listdir('.'):
+          if file.endswith('.csv'):
+              os.rename(file, 'service-area-puf.csv')
+    outputFiles:
+      - "*.csv"
+
+  - id: upload_service_area_puf
+    type: io.kestra.plugin.gcp.gcs.Upload
+    description: Upload the service areas puf file to GCS
+    from: "{{ outputs.rename_service_area_puf.outputFiles['service-area-puf.csv'] }}"
+    to: "gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/service-area-puf/{{inputs.plan_year}}_service-area-puf.csv"
+
+  - id: create_service_area_puf_external_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create temporary external table for service area puf data
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.service_area_puf_{{inputs.plan_year}}_ext`
+      OPTIONS (
+        format = 'CSV',
+        uris = ['gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/service-area-puf/*.csv']
+      );
+
+  - id: create_service_area_puf_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create external table for service area puf data
+    sql: |
+      CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.service_area_puf` (
+        BusinessYear INT64,
+        StateCode STRING,
+        IssuerId INT64,
+        SourceName STRING,
+        ImportDate TIMESTAMP,
+        ServiceAreaId STRING,
+        ServiceAreaName STRING,
+        CoverEntireState BOOL,
+        County INT64,
+        PartialCounty BOOL,
+        ZipCodes STRING,
+        PartialCountyJustification STRING,
+        MarketCoverage STRING,
+        DentalOnlyPlan BOOL,
+        formatted_date date,
+      )
+      PARTITION by formatted_date;
+
+  - id: insert_service_area_puf_data
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Insert data into the service area puf table
+    sql: |
+      DELETE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.service_area_puf` where formatted_date = DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01);
+      INSERT INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.service_area_puf`
+      SELECT CAST(BusinessYear AS INT64) AS BusinessYear,
+      CAST(StateCode AS STRING) AS StateCode,
+      CAST(IssuerId AS INT64) AS IssuerId,
+      CAST(SourceName AS STRING) AS SourceName,
+      CAST(ImportDate AS TIMESTAMP) AS ImportDate,
+      CAST(ServiceAreaId AS STRING) AS ServiceAreaId,
+      CAST(ServiceAreaName AS STRING) AS ServiceAreaName,
+      CAST(CoverEntireState AS BOOL) AS CoverEntireState,
+      CAST(County AS INT64) AS County,
+      CAST(PartialCounty AS BOOL) AS PartialCounty,
+      CAST(ZipCodes AS STRING) AS ZipCodes,
+      CAST(PartialCountyJustification AS STRING) AS PartialCountyJustification,
+      CAST(MarketCoverage AS STRING) AS MarketCoverage,
+      CAST(DentalOnlyPlan AS BOOL) AS DentalOnlyPlan, 
+      DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01)  AS formatted_date FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.service_area_puf_{{inputs.plan_year}}_ext`;
+
+  - id: get_rate_puf
+    type: io.kestra.plugin.core.http.Download
+    description: Download the rate puf file
+    uri: https://download.cms.gov/marketplace-puf/{{inputs.plan_year}}/rate-puf.zip
+
+  - id: unzip_rate_puf
+    type: io.kestra.plugin.compress.ArchiveDecompress
+    description: Unzip the rate puf file
+    algorithm: ZIP
+    from: "{{ outputs.get_rate_puf.uri }}"
+
+  - id: rename_rate_puf
+    type: io.kestra.plugin.scripts.python.Script
+    inputFiles: "{{ outputs.unzip_rate_puf.files }}"
+    script: |
+      import os
+      for file in os.listdir('.'):
+          if file.endswith('.csv'):
+              os.rename(file, 'rate-puf.csv')
+    outputFiles:
+      - "*.csv"
+
+  - id: upload_rate_puf
+    type: io.kestra.plugin.gcp.gcs.Upload
+    description: Upload the rate puf file to GCS
+    from: "{{ outputs.rename_rate_puf.outputFiles['rate-puf.csv'] }}"
+    to: "gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/rate-puf/{{inputs.plan_year}}_rate-puf.csv"
+
+  - id: create_rate_puf_temp_external_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create temporary external table for rate puf data
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.rate_puf_{{inputs.plan_year}}_ext`
+      ( BusinessYear INT64,
+        StateCode STRING,
+        IssuerId INT64,
+        SourceName STRING,
+        ImportDate TIMESTAMP,
+        RateEffectiveDate DATE,
+        RateExpirationDate DATE,
+        PlanId STRING,
+        RatingAreaId STRING,
+        Tobacco STRING,
+        Age STRING,
+        IndividualRate FLOAT64,
+        IndividualTobaccoRate FLOAT64,
+        Couple FLOAT64,
+        PrimarySubscriberAndOneDependent FLOAT64,
+        PrimarySubscriberAndTwoDependents FLOAT64,
+        PrimarySubscriberAndThreeOrMoreDependents FLOAT64,
+        CoupleAndOneDependent FLOAT64,
+        CoupleAndTwoDependents FLOAT64,
+        CoupleAndThreeOrMoreDependents FLOAT64
+      )
+      OPTIONS (
+        format = 'CSV',
+        uris = ['gs://{{kv('GCP_BUCKET_NAME')}}/{{inputs.plan_year}}/rate-puf/*.csv']
+      );
+
+  - id: create_rate_puf_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Create external table for rate puf data
+    sql: |
+      CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.rate_puf` (
+        BusinessYear INT64,
+        StateCode STRING,
+        IssuerId INT64,
+        SourceName STRING,
+        ImportDate TIMESTAMP,
+        RateEffectiveDate DATE,
+        RateExpirationDate DATE,
+        PlanId STRING,
+        RatingAreaId STRING,
+        Tobacco STRING,
+        Age STRING,
+        IndividualRate FLOAT64,
+        IndividualTobaccoRate FLOAT64,
+        Couple FLOAT64,
+        PrimarySubscriberAndOneDependent FLOAT64,
+        PrimarySubscriberAndTwoDependents FLOAT64,
+        PrimarySubscriberAndThreeOrMoreDependents FLOAT64,
+        CoupleAndOneDependent FLOAT64,
+        CoupleAndTwoDependents FLOAT64,
+        CoupleAndThreeOrMoreDependents FLOAT64,
+        formatted_date date
+      )
+      PARTITION by formatted_date;
+
+  - id: insert_rate_puf_data
+    type: io.kestra.plugin.gcp.bigquery.Query
+    description: Insert data into the rate puf external table
+    sql: |
+      DELETE `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.rate_puf` where formatted_date = DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01);
+      INSERT INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.rate_puf`
+      SELECT CAST(BusinessYear AS INT64) AS BusinessYear,
+      CAST(StateCode AS STRING) AS StateCode,
+      CAST(IssuerId AS INT64) AS IssuerId,
+      CAST(SourceName AS STRING) AS SourceName,
+      CAST(ImportDate AS TIMESTAMP) AS ImportDate,
+      CAST(RateEffectiveDate AS DATE) AS RateEffectiveDate,
+      CAST(RateExpirationDate AS DATE) AS RateExpirationDate,
+      CAST(PlanId AS STRING) AS PlanId,
+      CAST(RatingAreaId AS STRING) AS RatingAreaId,
+      CAST(Tobacco AS STRING) AS Tobacco,
+      CAST(Age AS STRING) AS Age,
+      CAST(IndividualRate AS FLOAT64) AS IndividualRate,
+      CAST(IndividualTobaccoRate AS FLOAT64) AS IndividualTobaccoRate,
+      CAST(Couple AS FLOAT64) AS Couple,
+      CAST(PrimarySubscriberAndOneDependent AS FLOAT64) AS PrimarySubscriberAndOneDependent,
+      CAST(PrimarySubscriberAndTwoDependents AS FLOAT64) AS PrimarySubscriberAndTwoDependents,
+      CAST(PrimarySubscriberAndThreeOrMoreDependents AS FLOAT64) AS PrimarySubscriberAndThreeOrMoreDependents,
+      CAST(CoupleAndOneDependent AS FLOAT64) AS CoupleAndOneDependent,
+      CAST(CoupleAndTwoDependents AS FLOAT64) AS CoupleAndTwoDependents,
+      CAST(CoupleAndThreeOrMoreDependents AS FLOAT64) AS CoupleAndThreeOrMoreDependents, 
+      DATE(CAST("{{inputs.plan_year}}" AS INT64), 01,01)  AS formatted_date FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.rate_puf_{{inputs.plan_year}}_ext`;
+
+  - id: sync
+    type: io.kestra.plugin.git.SyncNamespaceFiles
+    url: https://github.com/fsjoyti/dataeng-zoomcamp-final-project
+    branch: main
+    namespace: "{{flow.namespace}}"
+    gitDirectory: dbt/insurance-marketplace-dbt # The directory where the dbt project files are located in the git repo
+    dryRun: false
+    disabled: false # this Git Sync is needed only when running it the first time, afterwards the task can be disabled
+
+  - id: purge_files
+    type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
+    description: If you'd like to explore Kestra outputs, disable it.
+    disabled: false
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{kv('GCP_CREDS')}}"
+      projectId: "{{kv('GCP_PROJECT_ID')}}"
+      location: "{{kv('GCP_LOCATION')}}"
+      bucket: "{{kv('GCP_BUCKET_NAME')}}"

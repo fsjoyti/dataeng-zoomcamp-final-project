@@ -1,0 +1,10 @@
+version: 2
+
+seeds: 
+  - name: states
+    description: "Seed data for state codes and names"
+    config:
+      delimiter: ","
+      header: true
+      quote_columns: true
+      materialized: seed # This will create a table from the seed data

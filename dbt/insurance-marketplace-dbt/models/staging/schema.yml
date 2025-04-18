@@ -16,7 +16,12 @@ sources:
         description: "Staging table for shop market medical data"
       - name: benefits_and_cost_sharing_puf
         description: "Benefits and cost sharing PUF data" # This is optional, included for completeness
-
+      - name: plan_attributes_puf
+        description: "Plan attributes data" # This is optional, included for completeness
+      - name : rate_puf
+        description: "Rate PUF data" # This is optional, included for completeness, used in some models
+      - name: service_area_puf
+        description: "Service area PUF data" # This is optional, included for completeness, used in some models
 
 models:
     - name: stg_individual_market_dental_data
@@ -46,12 +51,8 @@ models:
           description: "Rating area for the insurance plan"
         - name: child_only_plan
           description: "Indicates if the plan is a child-only plan (boolean)"
-        - name: market_coverage_type
-          description: "Market coverage type (e.g., individual, small group)"
         - name: plan_year
           description: "Year of the insurance plan"
-        - name: dental_only_plan
-          description: "Indicates if the plan is a dental-only plan (boolean)"
 
     - name: stg_shop_market_dental_data
       description: "Staging model for shop market dental data"
@@ -80,12 +81,8 @@ models:
           description: "Rating area for the insurance plan"
         - name: child_only_plan
           description: "Indicates if the plan is a child-only plan (boolean)"
-        - name: market_coverage_type
-          description: "Market coverage type (e.g., individual, small group)"
         - name: plan_year
           description: "Year of the insurance plan"
-        - name: dental_only_plan
-          description: "Indicates if the plan is a dental-only plan (boolean)"
 
     - name: stg_individual_market_medical_data
       description: "Staging model for individual market medical data (not used in this example)"
@@ -114,12 +111,8 @@ models:
           description: "Rating area for the insurance plan"
         - name: child_only_plan
           description: "Indicates if the plan is a child-only plan (boolean)"
-        - name: market_coverage_type
-          description: "Market coverage type (e.g., individual, small group)"
         - name: plan_year
-          description: "Year of the insurance plan"
-        - name: dental_only_plan
-          description: "Indicates if the plan is a dental-only plan (boolean)"    
+          description: "Year of the insurance plan" 
     - name: stg_shop_market_medical_data
       description: "Staging model for shop market medical data (not used in this example)"
       config:
@@ -147,9 +140,5 @@ models:
           description: "Rating area for the insurance plan"
         - name: child_only_plan
           description: "Indicates if the plan is a child-only plan (boolean)"
-        - name: market_coverage_type
-          description: "Market coverage type (e.g., individual, small group)"
         - name: plan_year
           description: "Year of the insurance plan"
-        - name: dental_only_plan
-          description: "Indicates if the plan is a dental-only plan (boolean)"
