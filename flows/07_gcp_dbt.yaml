@@ -11,7 +11,7 @@ tasks:
     dryRun: false
     disabled: false # this Git Sync is needed only when running it the first time, afterwards the task can be disabled
 
-  - id: dbt-run
+  - id: dbt-build
     type: io.kestra.plugin.dbt.cli.DbtCLI
     env:
       DBT_DATABASE: "{{kv('GCP_PROJECT_ID')}}"
@@ -25,13 +25,12 @@ tasks:
       sa.json: "{{kv('GCP_CREDS')}}"
     commands:
       - dbt deps
-      # - dbt build
       - dbt run --full-refresh --vars '{"is_test_run":false}'
     storeManifest:
       key: manifest.json
       namespace: "{{ flow.namespace }}"
     profiles: |
-      name: my-bigquery-db
+      my-bigquery-db:
         target: dev
         outputs:
           dev:
@@ -46,6 +45,7 @@ tasks:
             timeout_seconds: 300 # increase the timeout for long running queries, adjust as needed based on your workload
             fixed_retries: 1 # retry once on failure, this is useful for transient errors
           target: dev # this is the target that will be used by dbt CLI commands, it should match the output above
+      
   
 pluginDefaults:
   - type: io.kestra.plugin.gcp
