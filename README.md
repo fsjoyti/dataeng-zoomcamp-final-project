@@ -35,8 +35,27 @@ To run the Kestra workflows:
     ```sh
     kestra-cli flows create ./flows/
     ```
-
 ### 6. Run the DBT Project  
+### Set up the Project and Install Requirements  
+
+Before running the DBT project, ensure the project is set up and the required dependencies are installed.  
+
+2. Create and activate a virtual environment:  
+    ```sh
+    python -m venv venv
+    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    ```  
+
+3. Install the required Python packages:  
+    ```sh
+    pip install -r requirements.txt
+    ```  
+
+4. Verify the setup by running the following command:  
+    ```sh
+    python main.py --help
+    ```  
+
 After the infrastructure is set up, navigate to the `insurance-marketplace-dbt` directory and run the DBT commands to build the models by updating the `profiles` file.
 
 ### 7. Access the Dashboard  
