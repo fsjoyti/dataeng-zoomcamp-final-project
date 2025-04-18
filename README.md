@@ -2,7 +2,7 @@
 
 ## Goals
 
-The goal of this project is to analyze how insurance premium amounts changed over the years from 2022 to 2025. As a starter, I attempted to look at how max insurance premium amounts changed from 2022 to 2025.  
+The objective of this project is to investigate trends in insurance premium amounts over the years 2022 to 2025 across various demographic and categorical groups. Initially, the focus is on analyzing the changes in maximum insurance premium amounts during this period to identify significant patterns or anomalies.
 Link to the dashboard:  
 [Insurance Premium Dashboard](https://lookerstudio.google.com/reporting/5ef34b9e-ea05-4925-b5e8-c13f94593982)
 
