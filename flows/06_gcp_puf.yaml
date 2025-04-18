@@ -15,7 +15,6 @@ tasks:
     labels:
       plan_year: "{{inputs.plan_year}}"
 
-
   - id: get_benefits_and_cost_sharing_puf
     type: io.kestra.plugin.core.http.Download
     description: Download the benefits and cost sharing puf file
