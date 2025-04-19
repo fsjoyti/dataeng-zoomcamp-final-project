@@ -138,6 +138,8 @@ The ETL architecture for this project is designed to extract data from various s
 
 Once the data pipeline is complete, view the analysis on the [Insurance Premium Dashboard](https://lookerstudio.google.com/reporting/5ef34b9e-ea05-4925-b5e8-c13f94593982).
 
+Use optional metrics to analyze maximum insurance premium amounts across various categories in both of these visualizations. Leverage the drill-down feature in the bar chart to explore maximum premium amounts by `plan_year`, `state`, or `market_type` for deeper insights. 
+
 ---
 
 ### Notes
