@@ -3,6 +3,40 @@
 ## Project Goals
 
 This project aims to analyze trends in insurance premium amounts from 2022 to 2025 across various demographic and categorical groups. The primary focus is on identifying significant patterns or anomalies in the maximum insurance premium amounts during this period.  
+## ETL Architecture
+
+
+Data Source → Kestra (Docker) → GCP Bucket → BigQuery → Looker Studio 
+The ETL architecture for this project is designed to extract data from various sources, transform it into a structured format, and load it into a data warehouse for analysis. Below is the architecture diagram:
+
+![ETL Architecture](image.png)
+
+### Diagram Description
+
+The ETL pipeline for this project is structured as follows:
+
+1. **Data Source**  
+    - **Label:** Qualified Health Plan (QHP) Data  
+    - **Icon:** CSV/document icon  
+
+2. **Data Orchestration & Ingestion**  
+    - **Label:** Kestra (running in Docker container)  
+    - **Note:** Kestra orchestrates the ingestion and loading process.
+
+3. **Cloud Storage**  
+    - **Label:** GCP Bucket  
+    - **Icon:** Google Cloud Storage bucket icon  
+
+4. **Transformation**  
+    - **Label:** DBT  
+
+5. **Data Warehouse**  
+    - **Label:** BigQuery  
+    - **Icon:** BigQuery warehouse icon  
+
+6. **Visualization**  
+    - **Label:** Looker Studio  
+    - **Icon:** Looker Studio logo  
 
 **Link to the dashboard:**  
 [Insurance Premium Dashboard](https://lookerstudio.google.com/reporting/5ef34b9e-ea05-4925-b5e8-c13f94593982)
@@ -79,6 +113,17 @@ This project aims to analyze trends in insurance premium amounts from 2022 to 20
     ```
 5. Update the `profiles.yml` file with your GCP project details and run the DBT commands to build the models.
 
+6. Run the DBT commands to build and test the models:
+    ```sh
+    dbt deps
+    dbt seed
+    dbt run
+    ```
+7. Generate and view the documentation:
+    ```sh
+    dbt docs generate
+    dbt docs serve
+    ```
 ---
 
 ### 4. Access the Dashboard
