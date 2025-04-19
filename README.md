@@ -3,6 +3,17 @@
 ## Project Goals
 
 This project aims to analyze trends in insurance premium amounts from 2022 to 2025 across various demographic and categorical groups. The primary focus is on identifying significant patterns or anomalies in the maximum insurance premium amounts during this period.  
+### Why Analyze Maximum Premium Amounts?
+
+Analyzing maximum premium amounts provides critical insights into the upper bounds of insurance costs, which can help identify outliers, anomalies, or trends that may indicate systemic issues or opportunities for optimization. By focusing on the maximum values, we can:
+
+- Detect potential cases of overpricing or fraud.
+- Understand the impact of demographic and categorical factors on premium costs.
+- Inform policy decisions to ensure affordability and fairness in insurance pricing.
+- Highlight areas where intervention or regulation may be necessary to protect consumers.
+
+This analysis is particularly valuable for stakeholders such as policymakers, insurers, and consumer advocacy groups aiming to improve transparency and equity in the insurance market.
+
 ## ETL Architecture
 
 
@@ -11,32 +22,31 @@ The ETL architecture for this project is designed to extract data from various s
 
 ![ETL Architecture](image.png)
 
-### Diagram Description
-
-The ETL pipeline for this project is structured as follows:
 
 1. **Data Source**  
-    - **Label:** Qualified Health Plan (QHP) Data  
-    - **Icon:** CSV/document icon  
+    - The pipeline utilizes Qualified Health Plan (QHP) data and publicly available health files sourced from marketplace health insurance websites. These datasets provide comprehensive information on insurance premiums and related attributes.
 
 2. **Data Orchestration & Ingestion**  
-    - **Label:** Kestra (running in Docker container)  
-    - **Note:** Kestra orchestrates the ingestion and loading process.
+    - **Tool:** Kestra  
+      Kestra, running in a Docker container, orchestrates the entire data ingestion process. It automates the extraction of raw data, ensuring seamless and reliable loading into the cloud storage.
 
 3. **Cloud Storage**  
-    - **Label:** GCP Bucket  
-    - **Icon:** Google Cloud Storage bucket icon  
+    - **Tool:** Google Cloud Storage (GCS)  
+      The ingested CSV files are stored in a GCP Bucket, serving as the landing zone for raw data. This ensures scalability, durability, and easy accessibility for downstream processing.
 
-4. **Transformation**  
-    - **Label:** DBT  
+4. **Data Transformation**  
+    - **Tool:** DBT (Data Build Tool)  
+      DBT is used to transform the raw data into a structured format. It creates a star schema by generating fact and dimension tables in BigQuery, enabling efficient querying and analysis.
 
 5. **Data Warehouse**  
-    - **Label:** BigQuery  
-    - **Icon:** BigQuery warehouse icon  
+    - **Tool:** BigQuery  
+      BigQuery acts as the central data warehouse, storing the transformed data. Its powerful querying capabilities allow for fast and scalable analysis of large datasets.
 
-6. **Visualization**  
-    - **Label:** Looker Studio  
-    - **Icon:** Looker Studio logo  
+6. **Data Visualization**  
+    - **Tool:** Looker Studio  
+      Looker Studio is used to create interactive dashboards and visualizations. These provide stakeholders with actionable insights into trends, anomalies, and patterns in insurance premium data.
+
+This pipeline ensures a robust, end-to-end data processing workflow, enabling accurate and insightful analysis of insurance premium trends.
 
 **Link to the dashboard:**  
 [Insurance Premium Dashboard](https://lookerstudio.google.com/reporting/5ef34b9e-ea05-4925-b5e8-c13f94593982)
