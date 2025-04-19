@@ -46,8 +46,6 @@ The ETL architecture for this project is designed to extract data from various s
     - **Tool:** Looker Studio  
       Looker Studio is used to create interactive dashboards and visualizations. These provide stakeholders with actionable insights into trends, anomalies, and patterns in insurance premium data.
 
-This pipeline ensures a robust, end-to-end data processing workflow, enabling accurate and insightful analysis of insurance premium trends.
-
 **Link to the dashboard:**  
 [Insurance Premium Dashboard](https://lookerstudio.google.com/reporting/5ef34b9e-ea05-4925-b5e8-c13f94593982)
 
