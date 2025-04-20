@@ -126,7 +126,7 @@ The ETL architecture for this project is designed to extract data from various s
     dbt deps
     dbt seed
     dbt run
-    dbt tes
+    dbt test
     ```
 7. Generate and view the documentation:
     ```sh
