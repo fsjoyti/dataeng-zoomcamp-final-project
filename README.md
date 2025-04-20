@@ -134,6 +134,13 @@ The ETL architecture for this project is designed to extract data from various s
     ```
 ---
 
+---
+### Accessing the DBT Documentation
+
+To explore the current schema and detailed DBT documentation for this repository, visit the GitHub Pages site:  
+[DBT Documentation](https://fsjoyti.github.io/dataeng-zoomcamp-final-project/)
+
+
 ### 4. Access the Dashboard
 
 Once the data pipeline is complete, view the analysis on the [Insurance Premium Dashboard](https://lookerstudio.google.com/reporting/5ef34b9e-ea05-4925-b5e8-c13f94593982).
