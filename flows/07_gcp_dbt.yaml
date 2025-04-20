@@ -26,6 +26,7 @@ tasks:
     commands:
       - dbt deps
       - dbt run --full-refresh --vars '{"is_test_run":false}'
+      - dbt test --vars '{"is_test_run":false}'
     storeManifest:
       key: manifest.json
       namespace: "{{ flow.namespace }}"

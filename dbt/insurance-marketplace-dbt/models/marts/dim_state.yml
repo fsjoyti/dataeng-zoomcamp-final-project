@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: dim_state
+    description: "Dimension table for states, containing details about each state."
+    columns:
+      - name: state_id
+        description: "Unique identifier for the state."
+        tests:
+          - not_null
+          - unique
+      - name: state_abbreviation
+        description: "The two-letter code for the state."
+        tests:
+          - not_null
+          - unique
+
+      - name: state_name
+        description: "The full name of the state."
+        tests:
+          - not_null
+          - unique
+          

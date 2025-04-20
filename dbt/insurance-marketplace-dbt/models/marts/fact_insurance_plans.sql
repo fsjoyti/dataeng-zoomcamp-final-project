@@ -167,7 +167,7 @@ staging_combined AS (
     SELECT * FROM staging_shop_dental
 )
 
-select 
+select DISTINCT
     {{ dbt_utils.generate_surrogate_key(['staging_combined.plan_id_standard_component', 'staging_combined.plan_marketing_name']) }} as plan_id, -- Surrogate key
     staging_states.state_id,
     staging_counties.county_id,
