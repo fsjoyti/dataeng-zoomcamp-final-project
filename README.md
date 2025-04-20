@@ -133,6 +133,10 @@ The ETL architecture for this project is designed to extract data from various s
     dbt docs serve
     ```
 ---
+### Accessing the DBT Documentation
+
+To explore the current schema and detailed DBT documentation for this repository, visit the GitHub Pages site:  
+[DBT Documentation](https://fsjoyti.github.io/dataeng-zoomcamp-final-project/)
 
 ### 4. Access the Dashboard
 
