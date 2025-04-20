@@ -9,3 +9,5 @@ dbt_packages/
 profiles.yml
 # This file is used to store local dbt profiles, which can include sensitive information like credentials.
 
+run/
+
