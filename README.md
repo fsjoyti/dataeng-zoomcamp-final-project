@@ -1,7 +1,7 @@
 # Data Engineering Zoomcamp Final Project
 
 ## Notes for evaluators 
-I made minor updates to the README after submitting the original project. These changes were intended to improve navigation within the repository. Please feel free to disregard them if they significantly impact the grading process.
+I made minor updates to the README and added test cases after submitting the original project. These changes were intended to improve navigation within the repository. Please feel free to disregard them if they significantly impact the grading process.
 
 ## Project Goals
 
