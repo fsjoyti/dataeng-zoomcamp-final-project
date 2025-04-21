@@ -6,6 +6,7 @@
     )
 }}
 
+
 with staging_individual_dental AS (
     SELECT state_code,
     fips_county_code,

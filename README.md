@@ -12,8 +12,6 @@ Analyzing maximum premium amounts provides critical insights into the upper boun
 - Inform policy decisions to ensure affordability and fairness in insurance pricing.
 - Highlight areas where intervention or regulation may be necessary to protect consumers.
 
-This analysis is particularly valuable for stakeholders such as policymakers, insurers, and consumer advocacy groups aiming to improve transparency and equity in the insurance market.
-
 ## ETL Architecture
 
 
@@ -135,12 +133,27 @@ The ETL architecture for this project is designed to extract data from various s
     ```
 ---
 
----
 ### Accessing the DBT Documentation
 
 To explore the current schema and detailed DBT documentation for this repository, visit the GitHub Pages site:  
 [DBT Documentation](https://fsjoyti.github.io/dataeng-zoomcamp-final-project/)
 
+### Notes on clustering `fact_insurance_plans`
+
+#### Why Cluster `fact_insurance_plans` by `state_id`, `plan_year_id`, `market_type_id`, and `insurance_type_id`?
+
+Clustering the `fact_insurance_plans` table by these columns optimizes query performance and reduces costs in BigQuery. Here's why these specific columns were chosen:
+
+1. **`state_id`**: Insurance premiums often vary significantly by state due to differences in regulations, demographics, and market conditions. Clustering by `state_id` ensures that queries filtering by state (e.g., analyzing trends in a specific state) are faster and more efficient.
+
+2. **`plan_year_id`**: Insurance plans are typically updated annually, and trends are often analyzed by year. Clustering by `plan_year_id` allows for efficient querying of data for specific years or year ranges.
+
+3. **`market_type_id`**: Market types (e.g., individual, small group) represent distinct segments of the insurance market. Clustering by `market_type_id` helps optimize queries that focus on specific market segments.
+
+4. **`insurance_type_id`**: Different types of insurance (e.g., Dental, Medical) have unique characteristics and cost structures. Clustering by `insurance_type_id` improves performance for queries analyzing specific insurance types.
+
+By clustering on these columns, BigQuery physically organizes the data to minimize the amount of data scanned for common query patterns, such as filtering by state, year, market type, or insurance type. This results in faster query execution and lower costs, especially when working with large datasets.
+This analysis is particularly valuable for stakeholders such as policymakers, insurers, and consumer advocacy groups aiming to improve transparency and equity in the insurance market.
 
 ### 4. Access the Dashboard
 
