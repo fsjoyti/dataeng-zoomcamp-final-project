@@ -98,7 +98,7 @@ The ETL architecture for this project is designed to extract data from various s
     curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/04_gcp_kv.yaml
     curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/05_gcp_flow.yaml
     curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/06_gcp_puf.yaml
-    curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/07_gcp_puf.yaml
+    curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/07_gcp_dbt.yaml
     ```
 
 ---
@@ -126,6 +126,7 @@ The ETL architecture for this project is designed to extract data from various s
     dbt deps
     dbt seed
     dbt run
+    dbt test
     ```
 7. Generate and view the documentation:
     ```sh
@@ -137,6 +138,13 @@ The ETL architecture for this project is designed to extract data from various s
 
 To explore the current schema and detailed DBT documentation for this repository, visit the GitHub Pages site:  
 [DBT Documentation](https://fsjoyti.github.io/dataeng-zoomcamp-final-project/)
+
+---
+### Accessing the DBT Documentation
+
+To explore the current schema and detailed DBT documentation for this repository, visit the GitHub Pages site:  
+[DBT Documentation](https://fsjoyti.github.io/dataeng-zoomcamp-final-project/)
+
 
 ### 4. Access the Dashboard
 

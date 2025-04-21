@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: dim_county
+    
+    description: "Dimension table for counties, containing details about each county."
+    columns:
+      - name: county_id
+        description: "Unique identifier for the county."
+        tests:
+          - not_null
+          - unique
+      - name: county_name
+        description: "The name of the county."
+        tests:
+          - not_null
+      - name: state_id
+        description: "Foreign key referencing the state to which the county belongs."
+        tests:
+          - not_null
+      - name: fips_county_code
+        description: "Federal Information Processing Standards (FIPS) code for the county."
+        tests:
+          - not_null
+          - unique

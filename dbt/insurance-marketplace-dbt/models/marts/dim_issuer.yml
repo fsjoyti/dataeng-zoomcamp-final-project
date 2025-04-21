@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: dim_issuer
+    description: "Dimension table for issuers, containing details about each insurance issuer."
+    columns:
+      - name: issuer_id
+        description: "Unique identifier for the issuer."
+        tests:
+          - not_null
+      - name: issuer_name
+        description: "The name of the insurance issuer."
+        tests:
+          - not_null
+      - name: hios_issuer_id
+        description: "The Health Insurance Oversight System (HIOS) identifier for the issuer."
+        tests:
+          - not_null

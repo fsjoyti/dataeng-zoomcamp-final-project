@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: fact_insurance_plans
+    columns:
+      - name: plan_id
+        description: "Unique identifier for the insurance plan."
+        tests:
+          - not_null
+      - name: state_id
+        description: "Foreign key referencing the state."
+        tests:
+          - not_null
+      - name: county_id
+        description: "Foreign key referencing the county."
+        tests:
+          - not_null
+      - name: metal_level_id
+        description: "Foreign key referencing the metal level of the plan."
+        tests:
+          - not_null
+      - name: issuer_id
+        description: "Foreign key referencing the issuer of the plan."
+        tests:
+          - not_null
+      - name: plan_year_id
+        description: "Foreign key referencing the plan year."
+        tests:
+          - not_null  
+      - name: insurance_type_id
+        description: "Foreign key referencing the insurance type."
+        tests:
+          - not_null

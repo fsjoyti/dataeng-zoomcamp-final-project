@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: dim_plan_year
+    description: "Dimension table for plan years, containing details about each plan year."
+    columns:
+      - name: plan_year_id
+        description: "Unique identifier for the plan year."
+        tests:
+          - not_null
+          - unique
+      - name: plan_year
+        description: "The plan year."
+        tests:
+          - not_null
+          - unique
+
+      - name: plan_year_start_date
+        description: "Start date of the plan year."
+        tests:
+          - not_null
+      - name: plan_year_end_date
+        description: "End date of the plan year."
+        tests:
+          - not_null

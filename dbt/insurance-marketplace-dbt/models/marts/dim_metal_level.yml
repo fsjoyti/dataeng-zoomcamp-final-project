@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: dim_metal_level
+    description: "Dimension table for metal levels, containing details about each metal level."
+    columns:
+      - name: metal_level_id
+        description: "Unique identifier for the metal level."
+        tests:
+          - not_null
+          - unique
+      - name: metal_level
+        description: "The name of the metal level (e.g., Bronze, Silver, Gold, Platinum)."
+        tests:
+          - not_null
+          - unique
+      - name: metal_level_rank
+        description: "The order of the metal level, where lower numbers indicate lower coverage levels."
+        tests:
+          - not_null

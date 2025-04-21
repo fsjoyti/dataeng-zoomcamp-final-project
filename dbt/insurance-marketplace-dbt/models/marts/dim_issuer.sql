@@ -15,7 +15,7 @@ with staging_combined AS (
 )
 
 SELECT DISTINCT
-    {{ dbt_utils.generate_surrogate_key(['sc.hios_issuer_id']) }} AS issuer_id,
+    {{ dbt_utils.generate_surrogate_key(['sc.issuer_name', 'sc.hios_issuer_id']) }} AS issuer_id,
     sc.issuer_name,
     sc.hios_issuer_id
 FROM staging_combined sc

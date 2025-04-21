@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table'
+        materialized='table',
+        cluster_by=['state_id', 'plan_year_id', 'market_type_id', 'insurance_type_id',],
+        tags=['insurance_marketplace', 'fact', 'insurance_plans'],
     )
 }}
 
@@ -167,7 +169,7 @@ staging_combined AS (
     SELECT * FROM staging_shop_dental
 )
 
-select 
+select DISTINCT
     {{ dbt_utils.generate_surrogate_key(['staging_combined.plan_id_standard_component', 'staging_combined.plan_marketing_name']) }} as plan_id, -- Surrogate key
     staging_states.state_id,
     staging_counties.county_id,

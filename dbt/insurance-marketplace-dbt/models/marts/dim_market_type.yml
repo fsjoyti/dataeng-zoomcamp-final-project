@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: dim_market_type
+    description: "Dimension table for market types, containing details about each market type."
+    columns:
+      - name: market_type_id
+        description: "Unique identifier for the market type."
+        tests:
+          - not_null
+          - unique
+      - name: market_type_name
+        description: "The name of the market type (e.g., Individual, SHOP (Small Group))."
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['Individual', 'SHOP (Small Group)']
+              severity: warn
