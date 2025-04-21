@@ -138,6 +138,10 @@ The ETL architecture for this project is designed to extract data from various s
 To explore the current schema and detailed DBT documentation for this repository, visit the GitHub Pages site:  
 [DBT Documentation](https://fsjoyti.github.io/dataeng-zoomcamp-final-project/)
 
+### Notes on Partitioning `individual_market_medical_data`, `shop_market_medical_data`, `individual_market_dental_data`, and `shop_market_dental_data` by `{year}-01-01`
+
+Partitioning these tables by the `{year}-01-01` date ensures that the data is organized based on the effective start date of insurance plans, which typically begins at the start of the year. This approach aligns with the natural temporal structure of the data and facilitates efficient querying for year-based analyses.
+
 ### Notes on clustering `fact_insurance_plans`
 
 #### Why Cluster `fact_insurance_plans` by `state_id`, `plan_year_id`, `market_type_id`, and `insurance_type_id`?
@@ -152,8 +156,11 @@ Clustering the `fact_insurance_plans` table by these columns optimizes query per
 
 4. **`insurance_type_id`**: Different types of insurance (e.g., Dental, Medical) have unique characteristics and cost structures. Clustering by `insurance_type_id` improves performance for queries analyzing specific insurance types.
 
+
 By clustering on these columns, BigQuery physically organizes the data to minimize the amount of data scanned for common query patterns, such as filtering by state, year, market type, or insurance type. This results in faster query execution and lower costs, especially when working with large datasets.
 This analysis is particularly valuable for stakeholders such as policymakers, insurers, and consumer advocacy groups aiming to improve transparency and equity in the insurance market.
+
+Currently, `county_id` is excluded as a clustering key since it is not utilized as a filtering dimension in the dashboard. Similarly, `metal_id` and `issuer_id` are assumed to be less frequently used as filtering dimensions. If these assumptions change in the future, the clustering keys will need to be updated accordingly.
 
 ### 4. Access the Dashboard
 
