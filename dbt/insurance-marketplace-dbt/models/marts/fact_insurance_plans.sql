@@ -1,6 +1,8 @@
 {{
     config(
-        materialized='table'
+        materialized='table',
+        cluster_by=['state_id', 'plan_year_id', 'market_type_id', 'insurance_type_id',],
+        tags=['insurance_marketplace', 'fact', 'insurance_plans'],
     )
 }}
 
