@@ -1,5 +1,8 @@
 # Data Engineering Zoomcamp Final Project
 
+## Notes for evaluators 
+I made minor updates to the README after submitting the original project. These changes were intended to improve navigation within the repository. Please feel free to disregard them if they significantly impact the grading process.
+
 ## Project Goals
 
 This project aims to analyze trends in insurance premium amounts from 2022 to 2025 across various demographic and categorical groups. The primary focus is on identifying significant patterns or anomalies in the maximum insurance premium amounts during this period.  
