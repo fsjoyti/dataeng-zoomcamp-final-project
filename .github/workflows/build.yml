@@ -44,9 +44,22 @@ jobs:
         run: |
           ls -l ./dbt/insurance-marketplace-dbt/
 
-      - name: Install dbt packages
+      - name: dbt deps and seed
         run: |
           source .venv/bin/activate
           cd ./dbt/insurance-marketplace-dbt
           dbt deps
-          dbt debug --connection
+          dbt seed
+
+      - name: dbt test
+        run: |
+          source .venv/bin/activate
+          cd ./dbt/insurance-marketplace-dbt
+          dbt test --vars '{"is_test_run":false}'
+          
+      - name: dbt run
+        run: |
+          source .venv/bin/activate
+          cd ./dbt/insurance-marketplace-dbt
+          dbt run --full-refresh --vars '{"is_test_run":false}
+     
