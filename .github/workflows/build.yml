@@ -44,6 +44,10 @@ jobs:
         run: |
           ls -l ./dbt/insurance-marketplace-dbt/
 
+      - name: Inspect DBT credentials file
+        run: |
+          jq '.private_key = "REDACTED"' ./dbt/insurance-marketplace-dbt/creds.json
+
       - name: Install dbt packages
         run: |
           source .venv/bin/activate
