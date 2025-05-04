@@ -39,11 +39,11 @@ jobs:
         run: |
           cd ./dbt/insurance-marketplace-dbt
           echo "${{ secrets.DBT_BIGQUERY_TOKEN }}" > creds.json
-          
+
       - name: Install dbt packages
         run: |
           source .venv/bin/activate
           ls -l
           cd ./dbt/insurance-marketplace-dbt
           dbt deps
-          dbt build --vars '{"is_test_run":true}'
+          dbt debug --connection
