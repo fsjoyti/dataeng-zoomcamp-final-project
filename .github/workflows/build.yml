@@ -40,10 +40,13 @@ jobs:
           cd ./dbt/insurance-marketplace-dbt
           echo "${{ secrets.DBT_BIGQUERY_TOKEN }}" > creds.json
 
+      - name: List folder contents
+        run: |
+          ls -l ./dbt/insurance-marketplace-dbt/
+
       - name: Install dbt packages
         run: |
           source .venv/bin/activate
-          ls -l
           cd ./dbt/insurance-marketplace-dbt
           dbt deps
           dbt debug --connection
