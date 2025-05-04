@@ -35,11 +35,17 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
+      - name: Create DBT credentials file
+        run: |
+          cd ./dbt/insurance-marketplace-dbt
+          echo "${{ secrets.DBT_BIGQUERY_TOKEN }}" > creds.json
+
       - name: Install dbt packages
         run: |
           source .venv/bin/activate
           cd ./dbt/insurance-marketplace-dbt
           dbt deps
+          dbt run --full-refresh --vars '{"is_test_run":false}'
 
       # - name: Run dbt commands
       #   run: |

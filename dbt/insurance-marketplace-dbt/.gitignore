@@ -5,7 +5,3 @@ logs/
 .DS_Store
 dbt_packages/
 
-# Local configuration files
-profiles.yml
-# This file is used to store local dbt profiles, which can include sensitive information like credentials.
-
