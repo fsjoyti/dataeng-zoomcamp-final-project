@@ -49,6 +49,7 @@ jobs:
           source .venv/bin/activate
           cd ./dbt/insurance-marketplace-dbt
           dbt deps
+          dbt debug --connection
           dbt seed
 
       - name: dbt test
@@ -56,7 +57,7 @@ jobs:
           source .venv/bin/activate
           cd ./dbt/insurance-marketplace-dbt
           dbt test --vars '{"is_test_run":false}'
-          
+
       - name: dbt run
         run: |
           source .venv/bin/activate
