@@ -5,7 +5,7 @@ my-bigquery-db:
     dev:
       type: bigquery
       method: service-account
-      keyfile_json: "{{ env_var('DBT_BIGQUERY_TOKEN') }}" # Fetch the token from the environment variable # Fetching credentials from GitHub environment variable
+      keyfile: ./creds.json # THIS FILE WILL BE GENERATED USING SECRETS DURING BUILD TIME
       project: vibrant-mantis-376307 # Replace this with your project id
       dataset: insurance_dataset_376307 # Replace this with dbt_your_name, e.g. dbt_bob
       location: us-central1 # Replace this with your location, e.g. US, EU, asia-northeast1, etc

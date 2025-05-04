@@ -18,8 +18,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env: 
-      DBT_BIGQUERY_TOKEN: ${{ secrets.DBT_BIGQUERY_TOKEN }} # This secret should contain the content of creds.json file
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,6 +34,11 @@ jobs:
 
       - name: Install the project
         run: uv sync --locked --all-extras --dev
+
+      - name: Create DBT credentials file
+        run: |
+          cd ./dbt/insurance-marketplace-dbt
+          echo "${{ secrets.DBT_BIGQUERY_TOKEN }}" | base64 -d > creds.json
 
       - name: List folder contents
         run: |
