@@ -44,10 +44,6 @@ jobs:
         run: |
           ls -l ./dbt/insurance-marketplace-dbt/
 
-      - name: Debug raw DBT credentials
-        run: |
-          cat ./dbt/insurance-marketplace-dbt/creds.json || echo "Failed to write creds.json"
-
       - name: Inspect DBT credentials file
         run: |
           jq '.private_key = "REDACTED"' ./dbt/insurance-marketplace-dbt/creds.json
