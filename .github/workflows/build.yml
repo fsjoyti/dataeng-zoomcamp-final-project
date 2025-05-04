@@ -50,7 +50,9 @@ jobs:
           cd ./dbt/insurance-marketplace-dbt
           dbt deps
           dbt debug --connection
-          dbt seed
+          dbt seed --show
+          dbt seed --debug
+          dbt seed --full-refresh
 
       - name: dbt test
         run: |
