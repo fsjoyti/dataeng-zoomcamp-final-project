@@ -44,23 +44,26 @@ jobs:
         run: |
           ls -l ./dbt/insurance-marketplace-dbt/
 
+      - name: dbt source freshness
+        run: |
+            source .venv/bin/activate
+            cd ./dbt/insurance-marketplace-dbt
+            dbt deps
+            dbt source freshness
+
+
       # - name: dbt deps and seed
       #   run: |
       #     source .venv/bin/activate
       #     cd ./dbt/insurance-marketplace-dbt
-      #     dbt deps
-      #     dbt debug --connection
       #     dbt seed --show
-  
 
       - name: dbt test
         run: |
           source .venv/bin/activate
           cd ./dbt/insurance-marketplace-dbt
-          dbt deps
-          dbt debug --connection
-          dbt debug --config-dir
-          dbt test --vars '{"is_test_run":false}'
+          dbt test --select source_status:fresher+ --state ./ --exclude tag:static --vars '{"is_test_run":false}'
+      
 
       # - name: dbt run
       #   run: |
