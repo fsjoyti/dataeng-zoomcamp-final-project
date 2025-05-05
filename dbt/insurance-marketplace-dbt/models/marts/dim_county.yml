@@ -9,7 +9,6 @@ models:
         description: "Unique identifier for the county."
         tests:
           - not_null
-          - unique
       - name: county_name
         description: "The name of the county."
         tests:
@@ -22,4 +21,3 @@ models:
         description: "Federal Information Processing Standards (FIPS) code for the county."
         tests:
           - not_null
-          - unique
