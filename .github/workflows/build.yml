@@ -44,25 +44,25 @@ jobs:
         run: |
           ls -l ./dbt/insurance-marketplace-dbt/
 
-      - name: dbt deps and seed
-        run: |
-          source .venv/bin/activate
-          cd ./dbt/insurance-marketplace-dbt
-          dbt deps
-          dbt debug --connection
-          dbt seed --show
-          dbt seed --debug
-          dbt seed --full-refresh
+      # - name: dbt deps and seed
+      #   run: |
+      #     source .venv/bin/activate
+      #     cd ./dbt/insurance-marketplace-dbt
+      #     dbt deps
+      #     dbt debug --connection
+      #     dbt seed --show
+  
 
       - name: dbt test
         run: |
           source .venv/bin/activate
           cd ./dbt/insurance-marketplace-dbt
+          dbt debug --connection
           dbt test --vars '{"is_test_run":false}'
 
-      - name: dbt run
-        run: |
-          source .venv/bin/activate
-          cd ./dbt/insurance-marketplace-dbt
-          dbt run --full-refresh --vars '{"is_test_run":false}
+      # - name: dbt run
+      #   run: |
+      #     source .venv/bin/activate
+      #     cd ./dbt/insurance-marketplace-dbt
+      #     dbt run --full-refresh --vars '{"is_test_run":false}
      
