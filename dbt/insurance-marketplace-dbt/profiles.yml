@@ -11,7 +11,6 @@ my-bigquery-db:
       location: us-central1 # Replace this with your location, e.g. US, EU, asia-northeast1, etc
       threads: 4
       timeout_seconds: 300
-      location: US
       priority: interactive
 
 
